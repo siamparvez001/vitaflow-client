@@ -1,98 +1,126 @@
-"use client"
-
+"use client";
 import React from 'react';
 import { motion } from 'framer-motion';
+import { FiUserPlus, FiBell, FiShield } from 'react-icons/fi'; // react-icons থেকে আইকন ইম্পোর্ট করা হয়েছে
 
 const StatsSection = () => {
-    // উপরের স্ট্যাটিস্টিকস কার্ডের ডাটা
+    // ১. উপরের স্ট্যাটিস্টিকস কার্ডের ডাটা
     const stats = [
-        { value: '10k+', label: 'Registered Donors' },
-        { value: '50k+', label: 'Lives Saved', highlight: true }, // এটি হাইলাইট করা কার্ড
-        { value: '24/7', label: 'Emergency Support' },
-        { value: '150+', label: 'Partner Hospitals' },
+        { value: '10k+', label: 'REGISTERED DONORS' },
+        { value: '50k+', label: 'LIVES SAVED', highlight: true }, // হাইলাইটেড লাল কার্ড
+        { value: '24/7', label: 'EMERGENCY SUPPORT' },
+        { value: '150+', label: 'PARTNER HOSPITALS' },
     ];
 
-    // নিচের 'How It Works' কার্ডের ডাটা
+    // ২. নিচের 'How LifeDrop Works' কার্ডের ডাটা (react-icons সহ)
     const steps = [
         {
-            icon: 'account_circle',
+            icon: <FiUserPlus className="w-6 h-6" />,
             title: 'Register',
             description: 'Create your donor profile with health history and blood type information in minutes.'
         },
         {
-            icon: 'notifications_active',
+            icon: <FiBell className="w-6 h-6" />,
             title: 'Get Notified',
             description: 'Receive instant alerts when a local hospital or patient needs your specific blood type.'
         },
         {
-            icon: 'bloodtype',
+            icon: <FiShield className="w-6 h-6" />,
             title: 'Donate & Save',
             description: 'Visit our certified partner locations to complete your donation safely and efficiently.'
         }
     ];
 
-    // অ্যানিমেশন সেটিংস
+    // Framer Motion অ্যানিমেশন ভ্যারিয়েন্ট
+    const containerVariants = {
+        hidden: { opacity: 0 },
+        visible: {
+            opacity: 1,
+            transition: { staggerChildren: 0.2 } // একটির পর একটি কার্ড আসবে
+        }
+    };
+
     const cardVariants = {
-        hidden: { opacity: 0, y: 20 },
+        hidden: { opacity: 0, y: 30 },
         visible: {
             opacity: 1,
             y: 0,
-            transition: {
-                duration: 0.5,
-                ease: "easeOut"
-            }
+            transition: { duration: 0.5, ease: "easeOut" }
         }
     };
 
     return (
-        <section className="bg-rose-50 py-16 md:py-20 lg:py-24">
-            <div className="container mx-auto px-4 md:px-6 lg:px-8 max-w-7xl">
-                {/* স্ট্যাটিস্টিকস কার্ড গ্রেড */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8 mb-16 md:mb-20">
+        <section className="bg-[#FFF8F6] py-16 md:py-24">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+
+                {/* 📊 স্ট্যাটিস্টিকস গ্রিড (Responsive: ১ কলাম থেকে ৪ কলাম) */}
+                <motion.div
+                    className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-20"
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-100px" }}
+                >
                     {stats.map((stat, index) => (
                         <motion.div
                             key={index}
-                            className={`p-10 rounded-xl shadow-lg flex flex-col items-center justify-center text-center transition-shadow duration-300 ${stat.highlight ? 'bg-red-800 text-white' : 'bg-white'}`}
-                            initial="hidden"
-                            animate="visible"
                             variants={cardVariants}
-                            whileHover={{ scale: 1.05 }} // হোভার ইফেক্ট
+                            whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                            className={`p-8 rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] flex flex-col items-center justify-center text-center border border-gray-100/50 ${stat.highlight
+                                    ? 'bg-[#B23242] text-white' // ইমেজ অনুসারে সেইম লাল কালার
+                                    : 'bg-white text-gray-900'
+                                }`}
                         >
-                            <span className={`text-5xl font-extrabold mb-3 ${stat.highlight ? 'text-white' : 'text-red-900'}`}>{stat.value}</span>
-                            <span className={`text-base font-medium tracking-tight ${stat.highlight ? 'text-red-100' : 'text-zinc-600'}`}>{stat.label}</span>
+                            <span className="text-4xl md:text-5xl font-bold mb-2 tracking-tight">
+                                {stat.value}
+                            </span>
+                            <span className={`text-xs font-bold tracking-wider ${stat.highlight ? 'text-rose-100' : 'text-gray-500'
+                                }`}>
+                                {stat.label}
+                            </span>
                         </motion.div>
                     ))}
-                </div>
+                </motion.div>
 
-                {/* 'How It Works' শিরোনাম এবং বর্ণনা */}
-                <div className="text-center mb-12 md:mb-16">
-                    <h2 className="text-4xl md:text-5xl font-extrabold text-zinc-950 mb-6 tracking-tighter">How LifeDrop Works</h2>
-                    <p className="text-xl text-zinc-600 max-w-3xl mx-auto leading-relaxed">
+                {/* 🎯 শিরোনাম সেকশন */}
+                <div className="text-center mb-16">
+                    <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4 tracking-tight">
+                        How LifeDrop Works
+                    </h2>
+                    <p className="text-gray-600 max-w-2xl mx-auto text-base md:text-lg leading-relaxed">
                         Our streamlined process ensures that every drop of blood reaches those in need with maximum efficiency and care.
                     </p>
                 </div>
 
-                {/* 'How It Works' কার্ড গ্রেড */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-10">
+                {/* 🛠️ কাজের ধাপের গ্রিড (Responsive: ১ কলাম থেকে ৩ কলাম) */}
+                <motion.div
+                    className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-12"
+                    variants={containerVariants}
+                    initial="hidden"
+                    whileInView="visible"
+                    viewport={{ once: true, margin: "-100px" }}
+                >
                     {steps.map((step, index) => (
                         <motion.div
                             key={index}
-                            className="p-8 bg-white/60 rounded-xl shadow-md border border-red-100/30 text-center"
-                            initial="hidden"
-                            animate="visible"
                             variants={cardVariants}
-                            whileHover={{ scale: 1.03 }} // হোভার ইফেক্ট
+                            className="flex flex-col items-center md:items-start text-center md:text-left group"
                         >
-                            <div className="flex justify-center mb-6">
-                                <div className="p-3.5 bg-rose-100 text-red-900 rounded-lg">
-                                    <span className="material-symbols-outlined text-4xl text-red-800">{step.icon}</span>
-                                </div>
+                            {/* আইকন কন্টেইনার - ব্যাকগ্রাউন্ড হালকা লাল */}
+                            <div className="p-4 bg-[#FCE8E9] text-[#B23242] rounded-xl mb-6 transition-transform group-hover:scale-110 duration-300">
+                                {step.icon}
                             </div>
-                            <h3 className="text-3xl font-bold text-zinc-950 mb-5 tracking-tight">{step.title}</h3>
-                            <p className="text-lg text-zinc-700 leading-relaxed font-normal">{step.description}</p>
+
+                            <h3 className="text-xl font-bold text-gray-900 mb-3">
+                                {step.title}
+                            </h3>
+                            <p className="text-gray-600 text-sm md:text-base leading-relaxed">
+                                {step.description}
+                            </p>
                         </motion.div>
                     ))}
-                </div>
+                </motion.div>
+
             </div>
         </section>
     );

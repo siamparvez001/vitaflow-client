@@ -4,8 +4,8 @@ import { useState } from "react";
 import NextLink from "next/link";
 import { Button } from "@heroui/react";
 import Image from "next/image";
-import { useSession } from "@/lib/auth-client";
-import { signOut } from "better-auth/api";
+import { signOut, useSession } from "@/lib/auth-client";
+
 
 
 export default function Navbar() {
@@ -16,8 +16,10 @@ export default function Navbar() {
 
 
     const handleSignOut = async () => {
-        await signOut()
-    }
+        const data = await signOut();
+
+        console.log(data);
+    };
 
 
     const navItems = [
@@ -36,7 +38,7 @@ export default function Navbar() {
     ];
 
     return (
-        <nav className="sticky top-0 z-50 w-full border-b border-red-100 bg-[#FCE8E9]/95 backdrop-blur-md">
+        <nav className="sticky top-0 z-50 w-full border-b border-red-100 bg-[#FCE8E9]/85 backdrop-blur-md">
             <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-4 md:px-6">
                 {/* Logo + Mobile Menu Button */}
                 <div className="flex items-center gap-3">
@@ -80,13 +82,13 @@ export default function Navbar() {
                         href="/"
                         className="flex items-center gap-2 text-3xl font-bold text-red-700 transition-colors hover:text-red-800"
                     >
-                        <Image
+                        {/* <Image
                             src="/logo.jpeg"
                             alt="VitaFlow Logo"
                             width={60}
                             height={60}
                             priority
-                        />
+                        /> */}
 
                         <span>VitaFlow</span>
                     </NextLink>
@@ -112,18 +114,18 @@ export default function Navbar() {
                         user ? (
                             <div>
                                 <Image
-                                    src={user.image || "/default-avatar.png"} 
+                                    src={user.image || "/default-avatar.png"}
                                     alt={user.name}
-                                    width={40} 
+                                    width={40}
                                     height={40}
-                                    className="rounded-full object-cover" 
+                                    className="rounded-full object-cover"
                                 />
                                 <Button onClick={handleSignOut}>Sign Out</Button>
                             </div>
 
                         ) :
                             <NextLink
-                                href="/login"
+                                href="/auth/signin"
                                 className="font-medium text-zinc-700 transition-colors hover:text-red-600"
                             >
                                 Login

@@ -33,6 +33,7 @@ const SignUpForm = () => {
     const router = useRouter();
     const [isPending, startTransition] = useTransition();
     const [loadingText, setLoadingText] = useState(null);
+    const [role, setRole] = useState("donor")
 
     // Form State
     const [email, setEmail] = useState('');
@@ -103,6 +104,9 @@ const SignUpForm = () => {
                     email,
                     password,
                     name,
+                    role,
+                    district,
+                    upazila,
                     image: avatarUrl,
                     data: {
                         bloodGroup,
