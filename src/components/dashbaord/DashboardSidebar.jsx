@@ -1,89 +1,156 @@
 "use client"
 import { useSession } from "@/lib/auth-client";
-import { LayoutSideContentLeft, Bell, Briefcase, Envelope, Gear, House, Magnifier, Person } from "@gravity-ui/icons";
-import { Button, Drawer } from "@heroui/react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { FaUsers } from "react-icons/fa";
-
+import {
+    FiHome,
+    FiUser,
+    FiList,
+    FiPlusCircle,
+    FiUsers,
+    FiCheckSquare,
+    FiSettings,
+    FiLogOut,
+    FiMenu
+} from "react-icons/fi";
+import { Button, Drawer } from "@heroui/react";
+import React, { useState } from "react";
 
 export function DashboardSidebar() {
     const { data: session, isPending } = useSession();
+    const pathname = usePathname();
+    const [isOpen, setIsOpen] = useState(false);
 
     if (isPending) {
-        return <div>Loading...</div>
+        return <div className="p-4 text-sm text-gray-500">Loading sidebar...</div>
     }
 
     const user = session?.user;
 
     const navItems = [
-        { icon: House, href: "/dashboard/volunteer", label: "Home" },
-        { icon: Magnifier, href: "/dashboard/all-blood-donation-request", label: "Boold Request" },
-        { icon: Bell, href: "/dashboard/create-donation-request/new", label: "Post A Blood Request" },
-        { icon: FaUsers, href: "/dashboard/volunteer/company", label: "Manage Users" },
-        
-        { icon: Person, href: "/dashboard/profile", label: "Profile" },
-        { icon: Gear, href: "/settings", label: "Settings" },
+        { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
+        { icon: FiUser, href: "/dashboard/profile", label: "Profile" },
+        { icon: FiList, href: "/dashboard/all-blood-donation-request", label: "My Requests" },
+        { icon: FiPlusCircle, href: "/dashboard/create-donation-request/new", label: "Create Request" },
+        { icon: FiUsers, href: "/dashboard/all-users", label: "Manage Users" },
+        { icon: FiCheckSquare, href: "/dashboard/all-requests", label: "All Requests" },
     ];
 
-    const navContent = <nav className="flex flex-col gap-1">
-        {navItems.map((item) => (
-            <Link
-                key={item.label}
-                className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground transition-colors hover:bg-default"
-                href={item.href}
-            >
-                <item.icon className="size-5 text-muted" />
-                {item.label}
-            </Link>
-        ))}
-    </nav>
+    const bottomItems = [
+        { icon: FiSettings, href: "/dashboard/settings", label: "Settings" },
+    ];
+
+    const renderNavLinks = (items) => (
+        <div className="flex flex-col gap-1.5">
+            {items.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                    <Link
+                        key={item.label}
+                        href={item.href}
+                        onClick={() => setIsOpen(false)}
+                        className={`flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium transition-all ${isActive
+                                ? "bg-[#B32D44] text-white shadow-md font-semibold"
+                                : "text-gray-700 hover:bg-gray-100/80 hover:text-gray-900"
+                            }`}
+                    >
+                        <item.icon className={`size-5 ${isActive ? "text-white" : "text-gray-500"}`} />
+                        {item.label}
+                    </Link>
+                );
+            })}
+        </div>
+    );
 
     return (
         <>
-            <aside className="hidden h-[100dvh] w-64 shrink-0 flex-col border-r border-default p-4 lg:flex">
-                {navContent}
-                {user && (
-                    <div className="mt-auto flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground border-t border-default pt-4">
-                        <div className="flex justify-between items-center">
-                            <Person className="size-5 text-muted" />
-                            {user.name}
-                        </div>
-                        <div>
-                            {/* {user.email} */}
-                        </div>
+            {/* 💻 desktop sidebar */}
+            <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-[#FFF9F9] border-r border-gray-100 p-4 justify-between sticky top-0 self-start">
+                <div className="flex flex-col gap-6">
+                    <div className="px-3 py-2">
+                        <span className="text-xl font-black text-[#B32D44] tracking-wider">VITAFLOW</span>
                     </div>
-                )}
-            </aside>
-            <Drawer>
-                <Button className="lg:hidden" variant="secondary">
-                    <LayoutSideContentLeft />
-                    Menu
-                </Button>
-                <Drawer.Backdrop>
-                    <Drawer.Content placement="left">
-                        <Drawer.Dialog>
-                            <Drawer.CloseTrigger />
-                            <Drawer.Header>
-                                <Drawer.Heading>Navigation</Drawer.Heading>
-                            </Drawer.Header>
-                            <Drawer.Body className="flex flex-col h-full">
-                                {navContent}
-                                {user && (
-                                    <div className="mt-auto flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-foreground border-t border-default pt-4">
-                                        <div>
-                                            <Person className="size-5 text-muted" />
-                                            {user.name}
-                                            <div>
-                                                {user.email}
-                                            </div>
-                                        </div>
+                    {renderNavLinks(navItems)}
+                </div>
 
+                {/* ⚙️ bottom section */}
+                <div className="flex flex-col gap-1 border-t border-gray-200/60 pt-4 mt-auto">
+                    {renderNavLinks(bottomItems)}
+
+                    {/* 👤 user profile details */}
+                    {user && (
+                        <div className="flex items-center gap-3 px-4 py-3 my-2 bg-gray-50/80 rounded-xl border border-gray-100">
+                            <div className="w-9 h-9 rounded-full bg-[#B32D44]/10 text-[#B32D44] flex items-center justify-center font-bold text-sm shrink-0">
+                                {user.name ? user.name[0].toUpperCase() : "U"}
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                                <span className="text-sm font-bold text-gray-950 truncate">{user.name}</span>
+                                <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 🚪 sign Out link (updated) */}
+                    {user && (
+                        <Link
+                            href="/auth/signin"
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all w-full text-left"
+                        >
+                            <FiLogOut className="size-5 text-gray-500" />
+                            Sign Out
+                        </Link>
+                    )}
+                </div>
+            </aside>
+
+            {/* 📱 mobile dashboard bar */}
+            <div className="lg:hidden p-4 bg-[#FFF9F9] border-b border-gray-100 flex items-center justify-between w-full sticky top-0 z-50">
+                <span className="text-lg font-bold text-[#B32D44]">VitaFlow</span>
+                <Button onPress={() => setIsOpen(true)} isIconOnly variant="light" className="text-gray-700">
+                    <FiMenu className="size-6" />
+                </Button>
+            </div>
+
+            {/* mobile drawer */}
+            <Drawer isOpen={isOpen} onOpenChange={setIsOpen} placement="left" size="xs">
+                <Drawer.Content className="bg-[#FFF9F9]">
+                    <Drawer.Body className="flex flex-col justify-between h-full py-6 px-4">
+                        <div className="flex flex-col gap-6">
+                            <div className="px-3">
+                                <span className="text-xl font-black text-[#B32D44]">VITAFLOW</span>
+                            </div>
+                            {renderNavLinks(navItems)}
+                        </div>
+
+                        <div className="flex flex-col gap-1 border-t border-gray-200/60 pt-4">
+                            {renderNavLinks(bottomItems)}
+
+                            {user && (
+                                <div className="flex items-center gap-3 px-4 py-3 my-2 bg-gray-50 rounded-xl border border-gray-100">
+                                    <div className="w-9 h-9 rounded-full bg-[#B32D44]/10 text-[#B32D44] flex items-center justify-center font-bold text-sm shrink-0">
+                                        {user.name ? user.name[0].toUpperCase() : "U"}
                                     </div>
-                                )}
-                            </Drawer.Body>
-                        </Drawer.Dialog>
-                    </Drawer.Content>
-                </Drawer.Backdrop>
+                                    <div className="flex flex-col min-w-0">
+                                        <span className="text-sm font-bold text-gray-950 truncate">{user.name}</span>
+                                        <span className="text-xs text-gray-500 truncate">{user.email}</span>
+                                    </div>
+                                </div>
+                            )}
+
+                            {user && (
+                                <Link
+                                    href="/auth/signin"
+                                    onClick={() => setIsOpen(false)}
+                                    className="flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all w-full text-left"
+                                >
+                                    <FiLogOut className="size-5 text-gray-500" />
+                                    Sign Out
+                                </Link>
+                            )}
+                        </div>
+                    </Drawer.Body>
+                </Drawer.Content>
             </Drawer>
         </>
     );
