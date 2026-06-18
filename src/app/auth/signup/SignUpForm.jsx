@@ -108,7 +108,8 @@ const SignUpForm = () => {
                         bloodGroup,
                         district,
                         upazila,
-                    }
+                    },
+                    callbackURL:"/"
                 });
 
                 if (error) {

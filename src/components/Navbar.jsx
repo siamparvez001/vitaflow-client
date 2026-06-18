@@ -4,9 +4,21 @@ import { useState } from "react";
 import NextLink from "next/link";
 import { Button } from "@heroui/react";
 import Image from "next/image";
+import { useSession } from "@/lib/auth-client";
+import { signOut } from "better-auth/api";
+
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const { data: session, isPending } = useSession();
+    console.log("Session data is navbar:", session, "Is pending:", isPending)
+    const user = session?.user;
+
+
+    const handleSignOut = async () => {
+        await signOut()
+    }
+
 
     const navItems = [
         {
@@ -96,12 +108,28 @@ export default function Navbar() {
 
                 {/* Desktop Actions */}
                 <div className="hidden items-center gap-6 md:flex">
-                    <NextLink
-                        href="/login"
-                        className="font-medium text-zinc-700 transition-colors hover:text-red-600"
-                    >
-                        Login
-                    </NextLink>
+                    {
+                        user ? (
+                            <div>
+                                <Image
+                                    src={user.image || "/default-avatar.png"} 
+                                    alt={user.name}
+                                    width={40} 
+                                    height={40}
+                                    className="rounded-full object-cover" 
+                                />
+                                <Button onClick={handleSignOut}>Sign Out</Button>
+                            </div>
+
+                        ) :
+                            <NextLink
+                                href="/login"
+                                className="font-medium text-zinc-700 transition-colors hover:text-red-600"
+                            >
+                                Login
+                            </NextLink>
+
+                    }
 
                     <Button
                         as={NextLink}
@@ -131,7 +159,7 @@ export default function Navbar() {
                         ))}
 
                         <NextLink
-                            href="/login"
+                            href="/auth/signin"
                             className="text-base font-medium text-zinc-700"
                             onClick={() => setIsMenuOpen(false)}
                         >
@@ -153,3 +181,8 @@ export default function Navbar() {
         </nav>
     );
 }
+
+
+
+
+
