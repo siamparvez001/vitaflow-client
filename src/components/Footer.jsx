@@ -20,11 +20,11 @@ const Footer = () => {
                     <div className="flex flex-col items-center text-center md:items-start md:text-left">
                         <Link href="/">
                             <h2 className="text-2xl font-black tracking-tight text-[#7A1C2E]">
-                                LifeDrop
+                                VitaFlow
                             </h2>
                         </Link>
                         <p className="mt-2 text-sm font-bold text-gray-700/90">
-                            © {currentYear} LifeDrop. Urgent yet Composed.
+                            © {currentYear} VitaFlow. Urgent yet Composed.
                         </p>
                     </div>
 
