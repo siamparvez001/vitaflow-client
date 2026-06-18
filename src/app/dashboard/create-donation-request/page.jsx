@@ -3,11 +3,14 @@ import React, { useState } from "react";
 import { useSession } from "@/lib/auth-client";
 import { Form, Input, TextArea, Button } from "@heroui/react";
 import { FiSend, FiCheckCircle } from "react-icons/fi";
+import { bloodRequest } from "@/lib/actions/blood_request";
+import toast from "react-hot-toast";
+import { redirect } from "next/navigation";
 
 export default function CreateDonationRequest() {
     const { data: session, isPending } = useSession();
     const user = session?.user;
-
+    const [errors, setErrors] = useState({});
     const [selectedBloodGroup, setSelectedBloodGroup] = useState("");
     const [bloodGroupError, setBloodGroupError] = useState("");
     const [selectedDistrict, setSelectedDistrict] = useState("");
@@ -58,20 +61,55 @@ export default function CreateDonationRequest() {
 
     const upazilaOptions = selectedDistrict ? upazilas[selectedDistrict] : [];
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
 
-        if (!selectedBloodGroup) {
-            setBloodGroupError("Please select a blood group");
-            return;
-        }
-        setBloodGroupError("");
+    // সাবমিশনের সময় লোডিং ট্র্যাকিং করার জন্য একটি স্টেট
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
 
         const formData = new FormData(e.currentTarget);
         const data = Object.fromEntries(formData.entries());
+        const newErrors = {};
+
+        // ১. ব্লাড গ্রুপ ভ্যালিডেশন ও স্পেসিফিক টোস্ট
+        if (!selectedBloodGroup) {
+            newErrors.bloodGroup = "Blood group is required";
+            setBloodGroupError("Please select a blood group");
+            toast.error("Something went wrong");
+        } else {
+            setBloodGroupError("");
+        }
+
+        // ২. বাকি সব ফিল্ডের কাস্টম এরর চেকিং
+        if (!data.recipientName) newErrors.recipientName = "Recipient name is required";
+        if (!selectedDistrict) newErrors.recipientDistrict = "District is required";
+        if (!selectedUpazila) newErrors.recipientUpazila = "Upazila is required";
+        if (!data.hospitalName) newErrors.hospitalName = "Hospital name is required";
+        if (!data.fullAddress) newErrors.fullAddress = "Full address is required";
+        if (!data.donationDate) newErrors.donationDate = "Donation date is required";
+        if (!data.donationTime) newErrors.donationTime = "Donation time is required";
+        if (!data.requestMessage) newErrors.requestMessage = "Request message is required";
+
+        if (Object.keys(newErrors).length > 0) {
+            setErrors(newErrors);
+            const firstErrorKey = Object.keys(newErrors)[0];
+            toast.error(
+                `${newErrors[firstErrorKey]}! Please fill up all required fields.`
+            );
+            return;
+        }
+
+        setErrors({});
+        setIsSubmitting(true); // লোডিং শুরু
 
         const finalRequestData = {
-            ...data,
+            recipientName: data.recipientName,
+            hospitalName: data.hospitalName,
+            fullAddress: data.fullAddress,
+            donationDate: data.donationDate,
+            donationTime: data.donationTime,
+            requestMessage: data.requestMessage,
             bloodGroup: selectedBloodGroup,
             district: selectedDistrict,
             upazila: selectedUpazila,
@@ -80,8 +118,63 @@ export default function CreateDonationRequest() {
             status: "pending",
         };
 
-        console.log("Submitted Donation Request:", finalRequestData);
+       
+
+        try {
+            
+            const res = await bloodRequest(finalRequestData)
+            
+
+            if (res.insertedId) {
+                
+                toast.success(
+                    "Donation request posted and saved successfully."
+                );
+                
+                
+                e.target.reset();
+                setSelectedBloodGroup("");
+                setSelectedDistrict("");
+                setSelectedUpazila("");
+                redirect('/')
+            } else {
+                throw new Error("Failed to insert data");
+            }
+
+        } catch (error) {
+            console.error("Submission error:", error);
+            toast.error(
+                "Something went wrong while connecting to the server."
+            );
+        } finally {
+            setIsSubmitting(false); // লোডিং শেষ
+        }
     };
+
+    // const handleSubmit = (e) => {
+    //     e.preventDefault();
+
+    //     if (!selectedBloodGroup) {
+    //         setBloodGroupError("Please select a blood group");
+    //         return;
+    //     }
+    //     setBloodGroupError("");
+
+    //     const formData = new FormData(e.currentTarget);
+    //     const data = Object.fromEntries(formData.entries());
+
+    //     const finalRequestData = {
+    //         ...data,
+    //         bloodGroup: selectedBloodGroup,
+    //         district: selectedDistrict,
+    //         upazila: selectedUpazila,
+    //         requesterName: user?.name || "Anonymous User",
+    //         requesterEmail: user?.email || "user@example.com",
+    //         status: "pending",
+    //     };
+
+    //     console.log("Submitted Donation Request:", finalRequestData);
+    // };
     if (isPending) {
         return <div>Loading...</div>
     }
