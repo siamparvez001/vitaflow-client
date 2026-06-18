@@ -5,7 +5,8 @@ import { Form, Input, TextArea, Button } from "@heroui/react";
 import { FiSend, FiCheckCircle } from "react-icons/fi";
 import { bloodRequest } from "@/lib/actions/blood_request";
 import toast from "react-hot-toast";
-import { redirect } from "next/navigation";
+
+// import { redirect } from "next/navigation";
 
 export default function CreateDonationRequest() {
     const { data: session, isPending } = useSession();
@@ -115,7 +116,8 @@ export default function CreateDonationRequest() {
             upazila: selectedUpazila,
             requesterName: user?.name || "Anonymous User",
             requesterEmail: user?.email || "user@example.com",
-            status: "pending",
+            status: "Active",
+            userId: user?.id,
         };
 
        
@@ -136,7 +138,8 @@ export default function CreateDonationRequest() {
                 setSelectedBloodGroup("");
                 setSelectedDistrict("");
                 setSelectedUpazila("");
-                redirect('/')
+               
+             
             } else {
                 throw new Error("Failed to insert data");
             }

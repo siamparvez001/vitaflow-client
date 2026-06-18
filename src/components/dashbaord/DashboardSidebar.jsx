@@ -18,7 +18,7 @@ export function DashboardSidebar() {
     const navItems = [
         { icon: House, href: "/dashboard/volunteer", label: "Home" },
         { icon: Magnifier, href: "/dashboard/all-blood-donation-request", label: "Boold Request" },
-        { icon: Bell, href: "/dashboard/create-donation-request", label: "Post A Blood Request" },
+        { icon: Bell, href: "/dashboard/create-donation-request/new", label: "Post A Blood Request" },
         { icon: FaUsers, href: "/dashboard/volunteer/company", label: "Manage Users" },
         
         { icon: Person, href: "/dashboard/profile", label: "Profile" },
