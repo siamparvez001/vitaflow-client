@@ -69,7 +69,7 @@ export default function Navbar() {
                         className="flex items-center gap-2 text-3xl font-bold text-red-700 transition-colors hover:text-red-800"
                     >
                         <Image
-                            src="/logo.png"
+                            src="/logo.jpeg"
                             alt="VitaFlow Logo"
                             width={60}
                             height={60}
