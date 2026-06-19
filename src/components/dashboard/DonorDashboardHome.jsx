@@ -42,10 +42,10 @@ export default function DonorDashboardHome() {
 
         const lastDonation = sortedByDate[0]?.donationDate
             ? new Date(sortedByDate[0].donationDate).toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-              })
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+            })
             : "N/A";
 
         return {
