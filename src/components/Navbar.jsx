@@ -2,9 +2,12 @@
 
 import { useState } from "react";
 import NextLink from "next/link";
-import { Button } from "@heroui/react";
+import { Button, Avatar, Dropdown, Label } from "@heroui/react";
 import Image from "next/image";
 import { signOut, useSession } from "@/lib/auth-client";
+import { BiLogOut } from "react-icons/bi";
+import { CgProfile } from "react-icons/cg";
+import { MdDashboard } from "react-icons/md";
 
 
 
@@ -25,7 +28,7 @@ export default function Navbar() {
     const navItems = [
         {
             label: "Donation Requests",
-            href: "/donation-requests",
+            href: "donation-request",
         },
         {
             label: "Find Donors",
@@ -82,14 +85,6 @@ export default function Navbar() {
                         href="/"
                         className="flex items-center gap-2 text-3xl font-bold text-red-700 transition-colors hover:text-red-800"
                     >
-                        {/* <Image
-                            src="/logo.jpeg"
-                            alt="VitaFlow Logo"
-                            width={60}
-                            height={60}
-                            priority
-                        /> */}
-
                         <span>VitaFlow</span>
                     </NextLink>
                 </div>
@@ -110,38 +105,91 @@ export default function Navbar() {
 
                 {/* Desktop Actions */}
                 <div className="hidden items-center gap-6 md:flex">
-                    {
-                        user ? (
-                            <div>
-                                <Image
-                                    src={user.image || "/default-avatar.png"}
-                                    alt={user.name}
-                                    width={40}
-                                    height={40}
-                                    className="rounded-full object-cover"
-                                />
-                                <Button onClick={handleSignOut}>Sign Out</Button>
-                            </div>
+                    {user ? (
+                        <Dropdown>
+                            <Dropdown.Trigger className="rounded-full">
+                                <Avatar size="sm" aria-label="User menu">
+                                    <Avatar.Image
+                                        referrerPolicy="no-referrer"
+                                        alt={user?.name}
+                                        src={user?.image}
+                                    />
+                                    <Avatar.Fallback>{user?.name?.charAt(0) || "U"}</Avatar.Fallback>
+                                </Avatar>
+                            </Dropdown.Trigger>
+                            <Dropdown.Popover>
+                                <div className="px-3 pt-3 pb-1">
+                                    <div className="flex items-center gap-2">
+                                        <Avatar size="sm">
+                                            <Avatar.Image alt={user?.name} src={user?.image} />
+                                            <Avatar.Fallback>{user?.name?.charAt(0) || "U"}</Avatar.Fallback>
+                                        </Avatar>
+                                        <div className="flex flex-col gap-0">
+                                            <p className="text-sm leading-5 font-medium">
+                                                {user?.name}
+                                            </p>
+                                            <p className="text-xs leading-none text-muted">
+                                                {user?.email}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <Dropdown.Menu
+                                    onAction={(key) => console.log(`Selected: ${key}`)}
+                                >
+                                    <Dropdown.Item id="dashboard" textValue="Dashboard">
+                                        <NextLink
+                                            className="flex items-center gap-2 w-full"
+                                            href={`/dashboard`}
+                                        >
+                                            <MdDashboard />
+                                            <Label>Dashboard</Label>
+                                        </NextLink>
+                                    </Dropdown.Item>
 
-                        ) :
+                                    <Dropdown.Item id="profile" textValue="Profile">
+                                        <NextLink
+                                            className="flex items-center gap-2 w-full"
+                                            href={`/dashboard/profile`}
+                                        >
+                                            <CgProfile />
+                                            <Label>Profile</Label>
+                                        </NextLink>
+                                    </Dropdown.Item>
+
+                                    <Dropdown.Item
+                                        id="logout"
+                                        textValue="Logout"
+                                        variant="danger"
+                                        onClick={handleSignOut}
+                                    >
+                                        <div className="flex items-center gap-2">
+                                            <BiLogOut />
+                                            <Label>Logout</Label>
+                                        </div>
+                                    </Dropdown.Item>
+                                </Dropdown.Menu>
+                            </Dropdown.Popover>
+                        </Dropdown>
+                    ) : (
+                        <>
                             <NextLink
                                 href="/auth/signin"
                                 className="font-medium text-zinc-700 transition-colors hover:text-red-600"
                             >
                                 Login
                             </NextLink>
-
-                    }
-
-                    <Button
-                        as={NextLink}
-                        href="/register"
-                        color="danger"
-                        size="lg"
-                        className="font-semibold"
-                    >
-                        Join as Donor
-                    </Button>
+                            <Button
+                                as={NextLink}
+                                href="/register"
+                                color="danger"
+                                size="lg"
+                                className="font-semibold"
+                            >
+                                Join as Donor
+                            </Button>
+                        </>
+                    )}
                 </div>
             </div>
 

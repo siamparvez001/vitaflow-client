@@ -14,7 +14,7 @@ export default async function AllBloodDonationRequestPage() {
         redirect("/auth/login");
     }
 
-    const allowedRoles = ["Admin", "Volunteer"];
+    const allowedRoles = ["Admin", "Volunteer", "Donor"];
 
     if (!allowedRoles.includes(session.user.role)) {
         redirect("/dashboard");

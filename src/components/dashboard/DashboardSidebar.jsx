@@ -44,6 +44,20 @@ export function DashboardSidebar() {
             label: "Manage Users",
         });
     }
+    if (user?.role === "Role") {
+        navItems.push({
+            icon: FiUsers,
+            href: "/dashboard/donor",
+            label: "Manage Users",
+        });
+    }
+    if (user?.role === "Volunteer") {
+        navItems.push({
+            icon: FiUsers,
+            href: "/dashboard/volunteer",
+            label: "Manage Users",
+        });
+    }
 
     const bottomItems = [
         { icon: FiSettings, href: "/dashboard/settings", label: "Settings" },
