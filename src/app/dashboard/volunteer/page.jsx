@@ -1,5 +1,5 @@
 "use client"
-import { DashboardStats } from '@/components/dashbaord/DashboardStats';
+import { DashboardStats } from '@/components/dashboard/DashboardStats';
 import { useSession } from '@/lib/auth-client';
 import { Briefcase, CircleCheck, Persons, Thunderbolt } from '@gravity-ui/icons';
 import React from 'react';

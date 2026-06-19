@@ -30,10 +30,10 @@ export function DashboardSidebar() {
     const navItems = [
         { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
         { icon: FiUser, href: "/dashboard/profile", label: "Profile" },
-        { icon: FiList, href: "/dashboard/all-blood-donation-request", label: "My Requests" },
+        { icon: FiList, href: "/dashboard/my-donation-requests", label: "My Requests" },
         { icon: FiPlusCircle, href: "/dashboard/create-donation-request", label: "Create Request" },
         { icon: FiUsers, href: "/dashboard/all-users", label: "Manage Users" },
-        { icon: FiCheckSquare, href: "/dashboard/all-requests", label: "All Requests" },
+        { icon: FiCheckSquare, href: "/dashboard/all-blood-donation-request", label: "All Requests" },
     ];
 
     const bottomItems = [
@@ -50,8 +50,8 @@ export function DashboardSidebar() {
                         href={item.href}
                         onClick={() => setIsOpen(false)}
                         className={`flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium transition-all ${isActive
-                                ? "bg-[#B32D44] text-white shadow-md font-semibold"
-                                : "text-gray-700 hover:bg-gray-100/80 hover:text-gray-900"
+                            ? "bg-[#B32D44] text-white shadow-md font-semibold"
+                            : "text-gray-700 hover:bg-gray-100/80 hover:text-gray-900"
                             }`}
                     >
                         <item.icon className={`size-5 ${isActive ? "text-white" : "text-gray-500"}`} />
@@ -68,7 +68,9 @@ export function DashboardSidebar() {
             <aside className="hidden lg:flex flex-col w-64 min-h-screen bg-[#FFF9F9] border-r border-gray-100 p-4 justify-between sticky top-0 self-start">
                 <div className="flex flex-col gap-6">
                     <div className="px-3 py-2">
-                        <span className="text-xl font-black text-[#B32D44] tracking-wider">VITAFLOW</span>
+                        <span className="text-xl font-black text-[#B32D44] tracking-wider">
+                            <Link href={'/'}>VitaFlow</Link>
+                        </span>
                     </div>
                     {renderNavLinks(navItems)}
                 </div>

@@ -1,15 +1,9 @@
-// 'use server'
 
 
-// const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
 
-// export const createUser = async (newUserData) => {
-//     const res= await fetch (`${baseUrl}/api/all-users`,{
-//         method: 'POST',
-//         headers:{
-//             'Content-Type': 'application/json'
-//         },
-//         body: JSON.stringify(newUserData)
-//     });
-//     return res.json()
-// }
+import { serverFetch } from "../core/server";
+
+export const getAllUsers = async () => {
+    // ব্যাকএন্ডের অল-ইউজার এপিআইতে হিট করা হচ্ছে
+    return serverFetch(`/api/all-users`);
+}
