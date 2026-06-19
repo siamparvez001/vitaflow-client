@@ -31,7 +31,7 @@ export function DashboardSidebar() {
         { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
         { icon: FiUser, href: "/dashboard/profile", label: "Profile" },
         { icon: FiList, href: "/dashboard/all-blood-donation-request", label: "My Requests" },
-        { icon: FiPlusCircle, href: "/dashboard/create-donation-request/new", label: "Create Request" },
+        { icon: FiPlusCircle, href: "/dashboard/create-donation-request", label: "Create Request" },
         { icon: FiUsers, href: "/dashboard/all-users", label: "Manage Users" },
         { icon: FiCheckSquare, href: "/dashboard/all-requests", label: "All Requests" },
     ];
