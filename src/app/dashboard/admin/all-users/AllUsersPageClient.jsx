@@ -1,0 +1,236 @@
+"use client";
+import React, { useState, useEffect, useRef } from "react";
+import Image from "next/image";
+import { Chip } from "@heroui/react";
+import { FiMoreVertical, FiUserCheck, FiShield, FiSlash, FiCheck } from "react-icons/fi";
+import { toast, Toaster } from "react-hot-toast";
+
+export default function AllUsersPageClient() {
+    const [users, setUsers] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [activeDropdown, setActiveDropdown] = useState(null);
+
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+    const dropdownRef = useRef(null);
+
+    // ব্যাকএন্ড থেকে সব ইউজার ডাটা ফেচ করা
+    const fetchUsers = async () => {
+        try {
+            setLoading(true);
+            const res = await fetch(`${baseUrl}/api/all-users`);
+
+            if (!res.ok) {
+                throw new Error(`HTTP error! status: ${res.status}`);
+            }
+
+            const data = await res.json();
+            setUsers(data);
+        } catch (error) {
+            console.error("Error fetching users:", error);
+            toast.error("Failed to load users from backend");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Component mount হলে ডাটা ফেচ করো
+    useEffect(() => {
+        fetchUsers();
+    }, []);
+
+    // বাইরে ক্লিক করলে ড্রপডাউন বন্ধ করা
+    useEffect(() => {
+        function handleClickOutside(event) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+                setActiveDropdown(null);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+
+    // থ্রি-ডট ড্রপডাউন toggle
+    const toggleDropdown = (id, e) => {
+        e.stopPropagation();
+        setActiveDropdown(activeDropdown === id ? null : id);
+    };
+
+    // ইউজার অ্যাকশন হ্যান্ডলার (Block/Unblock/Role)
+    const handleAction = async (userId, actionType) => {
+        setActiveDropdown(null);
+        try {
+            let url = "";
+            let bodyData = {};
+
+            if (actionType === "block") {
+                url = `${baseUrl}/api/all-users/status/${userId}`;
+                bodyData = { status: "Blocked" };
+            } else if (actionType === "unblock") {
+                url = `${baseUrl}/api/all-users/status/${userId}`;
+                bodyData = { status: "Active" };
+            } else if (actionType === "make_volunteer") {
+                url = `${baseUrl}/api/all-users/role/${userId}`;
+                bodyData = { role: "Volunteer" };
+            } else if (actionType === "make_admin") {
+                url = `${baseUrl}/api/all-users/role/${userId}`;
+                bodyData = { role: "Admin" };
+            }
+
+            const res = await fetch(url, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(bodyData)
+            });
+
+            if (res.ok) {
+                toast.success("User updated successfully!");
+                fetchUsers(); // ডাটা রিফ্রেশ করো
+            } else {
+                const errorData = await res.json();
+                throw new Error(errorData.message || "Failed to update");
+            }
+        } catch (error) {
+            console.error("Action error:", error);
+            toast.error(error.message || "Something went wrong");
+        }
+    };
+
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#FCE8E9] flex items-center justify-center">
+                <div className="text-[#800020] font-bold text-lg animate-pulse">
+                    Loading users from database...
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <>
+            <Toaster position="top-right" />
+            {/* মেইন কন্টেইনার */}
+            <div className="min-h-screen bg-[#FCE8E9] p-4 sm:p-10 flex flex-col items-center">
+
+                {/* টেবিল কন্টেইনার */}
+                <div className="max-w-6xl w-full bg-white rounded-3xl shadow-sm border border-gray-200 overflow-hidden">
+
+                    {/* টেবিল হেডার */}
+                    <div className="grid grid-cols-12 bg-gray-50 py-4 px-6 text-xs font-bold uppercase tracking-wider text-gray-500 border-b border-gray-100">
+                        <div className="col-span-6 sm:col-span-5">User</div>
+                        <div className="col-span-3 text-center sm:text-left">Role</div>
+                        <div className="col-span-2 text-center sm:text-left">Status</div>
+                        <div className="col-span-1 sm:col-span-2 text-right">Actions</div>
+                    </div>
+
+                    {/* টেবিল বডি */}
+                    <div className="flex flex-col divide-y divide-gray-100">
+                        {users && users.length > 0 ? (
+                            users.map((singleUser) => (
+                                <div
+                                    key={singleUser._id}
+                                    className="grid grid-cols-12 items-center py-5 px-6 hover:bg-gray-50/80 transition-colors"
+                                >
+                                    {/* ইউজার ইনফো */}
+                                    <div className="col-span-6 sm:col-span-5 flex items-center gap-4">
+                                        <Image
+                                            src={singleUser.image || "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=100&h=100&q=80"}
+                                            alt={singleUser.name}
+                                            width={44}
+                                            height={44}
+                                            className="rounded-full object-cover border border-gray-100"
+                                            onError={(e) => {
+                                                e.target.src = "https://images.unsplash.com/photo-1622253692010-333f2da6031d?auto=format&fit=crop&w=100&h=100&q=80";
+                                            }}
+                                        />
+                                        <div>
+                                            <h4 className="text-sm font-bold text-gray-900">{singleUser.name || "N/A"}</h4>
+                                            <p className="text-xs text-gray-500">{singleUser.email || "N/A"}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* রোল */}
+                                    <div className="col-span-3 text-center sm:text-left">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${singleUser.role === "Admin" ? "bg-red-50 text-red-600" :
+                                                singleUser.role === "Volunteer" ? "bg-purple-50 text-purple-600" :
+                                                    "bg-gray-100 text-gray-600"
+                                            }`}>
+                                            {singleUser.role || "Donor"}
+                                        </span>
+                                    </div>
+
+                                    {/* স্ট্যাটাস */}
+                                    <div className="col-span-2 text-center sm:text-left">
+                                        <span className={`px-3 py-1 rounded-full text-xs font-bold ${singleUser.status === "Blocked"
+                                                ? "bg-rose-50 text-rose-600"
+                                                : "bg-emerald-50 text-emerald-600"
+                                            }`}>
+                                            {singleUser.status || "Active"}
+                                        </span>
+                                    </div>
+
+                                    {/* অ্যাকশন ড্রপডাউন */}
+                                    <div
+                                        className="col-span-1 sm:col-span-2 text-right relative"
+                                        ref={activeDropdown === singleUser._id ? dropdownRef : null}
+                                    >
+                                        <button
+                                            onClick={(e) => toggleDropdown(singleUser._id, e)}
+                                            className="p-2 text-gray-400 hover:text-gray-900 rounded-full hover:bg-gray-100 transition-colors"
+                                            title="More actions"
+                                        >
+                                            <FiMoreVertical className="size-5" />
+                                        </button>
+
+                                        {/* ড্রপডাউন মেনু */}
+                                        {activeDropdown === singleUser._id && (
+                                            <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-xl z-50 py-1.5">
+                                                {/* Block/Unblock বাটন */}
+                                                <button
+                                                    onClick={() => handleAction(
+                                                        singleUser._id,
+                                                        singleUser.status === "Blocked" ? "unblock" : "block"
+                                                    )}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                                                >
+                                                    {singleUser.status !== "Blocked" ? (
+                                                        <>
+                                                            <FiSlash className="size-4" /> Block User
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <FiCheck className="size-4" /> Unblock User
+                                                        </>
+                                                    )}
+                                                </button>
+
+                                                {/* Volunteer বাটন */}
+                                                <button
+                                                    onClick={() => handleAction(singleUser._id, "make_volunteer")}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                                                >
+                                                    <FiUserCheck className="size-4" /> Make Volunteer
+                                                </button>
+
+                                                {/* Admin বাটন */}
+                                                <button
+                                                    onClick={() => handleAction(singleUser._id, "make_admin")}
+                                                    className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50 flex items-center gap-2.5 transition-colors"
+                                                >
+                                                    <FiShield className="size-4" /> Make Admin
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            ))
+                        ) : (
+                            <div className="col-span-12 py-8 text-center text-gray-500">
+                                No users found
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+        </>
+    );
+}

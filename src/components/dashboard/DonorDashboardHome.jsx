@@ -1,29 +1,41 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatCard } from './StatCard';
 import DonationTable from './DonationTable';
+// import React, { useEffect, useState } from "react";
+import { useSession } from "@/lib/auth-client";
 
 export default function DonorDashboardHome() {
+    const { data: session } = useSession();
 
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // এখানে আপনার ব্যাকএন্ড API এর URL দিন
+
+        if (!session?.user?.email) return;
+
         const fetchRequests = async () => {
             try {
-                const response = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL}/api/my-donation-requests`);
+
+                const response = await fetch(
+                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/my-donation-requests?email=${session.user.email}`
+                );
+
                 const data = await response.json();
+
                 setRequests(data);
+
             } catch (error) {
-                console.error("Error fetching data:", error);
+                console.error(error);
             } finally {
                 setLoading(false);
             }
         };
 
         fetchRequests();
-    }, []);
+
+    }, [session]);
 
     if (loading) return <div>Loading...</div>;
 

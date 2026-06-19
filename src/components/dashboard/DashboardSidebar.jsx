@@ -26,15 +26,24 @@ export function DashboardSidebar() {
     }
 
     const user = session?.user;
+    console.log(user?.role)
+
 
     const navItems = [
         { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
         { icon: FiUser, href: "/dashboard/profile", label: "Profile" },
-        { icon: FiList, href: "/dashboard/my-donation-requests", label: "My Requests" },
-        { icon: FiPlusCircle, href: "/dashboard/create-donation-request", label: "Create Request" },
-        { icon: FiUsers, href: "/dashboard/all-users", label: "Manage Users" },
+        { icon: FiList, href: "/dashboard/donor/my-donation-requests", label: "My Requests" },
+        { icon: FiPlusCircle, href: "/dashboard/donor/create-donation-request", label: "Create Request" },
         { icon: FiCheckSquare, href: "/dashboard/all-blood-donation-request", label: "All Requests" },
     ];
+
+    if (user?.role === "Admin") {
+        navItems.push({
+            icon: FiUsers,
+            href: "/dashboard/admin/all-users",
+            label: "Manage Users",
+        });
+    }
 
     const bottomItems = [
         { icon: FiSettings, href: "/dashboard/settings", label: "Settings" },

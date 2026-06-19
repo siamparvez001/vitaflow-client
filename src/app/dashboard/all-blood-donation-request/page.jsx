@@ -1,29 +1,39 @@
-import { getAllDonationRequest } from '@/lib/api/blood_request'; // আপনার কাস্টম API ফেচার
 import { auth } from "@/lib/auth";
-import { headers } from "next/headers"; 
-import React from 'react';
-import DonationRequestTableClient from './DonationRequestTableClient'; // ক্লায়েন্ট কম্পোনেন্টটি ইমপোর্ট করছি
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
+import DonationRequestTableClient from "./DonationRequestTableClient";
 
-const AllDonationRequestPage = async () => {
+const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
+
+export default async function AllBloodDonationRequestPage() {
     const session = await auth.api.getSession({
         headers: await headers()
     });
 
-    const userId = session?.user?.id;
-    const currentUserRole = session?.user?.role || "Volunteer"; // 'Admin' অথবা 'Volunteer'
+    if (!session) {
+        redirect("/auth/login");
+    }
 
-    // ব্যাকএন্ড থেকে সবার রিকোয়েস্ট ডাটা তুলে আনা
-    const allRequest = userId ? await getAllDonationRequest(userId) : [];
+    const allowedRoles = ["Admin", "Volunteer"];
+
+    if (!allowedRoles.includes(session.user.role)) {
+        redirect("/dashboard");
+    }
+
+    // API Call
+    const res = await fetch(
+        `${baseUrl}/api/create-donation-request`,
+        {
+            cache: "no-store",
+        }
+    );
+
+    const requests = await res.json();
 
     return (
-        <div className="min-h-screen bg-[#FCE8E9] p-4 sm:p-10 text-gray-100 font-sans">
-            {/* আমরা রিয়েল ডাটা এবং রোল ক্লায়েন্ট টেবিলকে পাস করে দিচ্ছি */}
-            <DonationRequestTableClient 
-                initialRequests={allRequest} 
-                currentUserRole={currentUserRole} 
-            />
-        </div>
+        <DonationRequestTableClient
+            initialRequests={requests}
+            currentUserRole={session.user.role}
+        />
     );
-};
-
-export default AllDonationRequestPage;
+}

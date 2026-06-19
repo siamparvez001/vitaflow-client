@@ -26,6 +26,7 @@ const VolunteerDashboardHomePage = () => {
             <h1>I am a volunteer</h1>
             <DashboardStats statsData={volunteerStats}></DashboardStats>
         </div>
+        
     );
 };
 

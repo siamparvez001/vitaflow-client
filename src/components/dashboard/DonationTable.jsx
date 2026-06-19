@@ -3,6 +3,7 @@ import React from 'react';
 import { FiEye, FiEdit2, FiTrash2 } from "react-icons/fi";
 
 export default function DonationTable({ data }) {
+    console.log(data)
     
     
     const getStatusColor = (status) => {
