@@ -28,7 +28,7 @@ export default function Navbar() {
     const navItems = [
         {
             label: "Donation Requests",
-            href: "donation-request",
+            href: "/donation-request",
         },
         {
             label: "Find Donors",
