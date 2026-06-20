@@ -32,7 +32,7 @@ export default function Navbar() {
         },
         {
             label: "Find Donors",
-            href: "/find-donors",
+            href: "/search-donors",
         },
         {
             label: "Funding",

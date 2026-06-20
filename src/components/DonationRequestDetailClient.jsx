@@ -2,25 +2,33 @@
 import React, { useState, useEffect } from "react";
 import { use } from "react";
 import Link from "next/link";
-import { Card, Button, Modal, TextField, Label, Input } from "@heroui/react";
+import { useRouter } from "next/navigation";
+import { Card, Button, Modal } from "@heroui/react";
 import { FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
+import { useSession } from "@/lib/auth-client";
 
 export default function DonationRequestDetailClient({ params, id }) {
     const resolvedId = id || use(params).id;
+    const router = useRouter();
+
+    // ✅ session লোড হওয়ার আগ পর্যন্ত isPending true থাকে
+    const { data: session, isPending: sessionPending } = useSession();
 
     const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
     const [donating, setDonating] = useState(false);
-
-    // ✅ v3 তে Modal নিয়ন্ত্রণ করতে plain useState যথেষ্ট (useDisclosure লাগে না)
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    // ✅ Modal এর ভেতরের ফর্ম স্টেট
-    const [donorName, setDonorName] = useState("");
-    const [donorEmail, setDonorEmail] = useState("");
-
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+
+    // ✅ Private route guard — login session না থাকলে login page এ পাঠানো হবে।
+    // client component এ next/navigation এর redirect() কাজ করে না, তাই useRouter().push() ব্যবহার করছি।
+    useEffect(() => {
+        if (!sessionPending && !session) {
+            router.push("/auth/signin");
+        }
+    }, [sessionPending, session, router]);
 
     const fetchRequest = async () => {
         try {
@@ -49,20 +57,15 @@ export default function DonationRequestDetailClient({ params, id }) {
     };
 
     useEffect(() => {
+        // ✅ যতক্ষণ session resolve না হচ্ছে বা session নেই, ডাটা ফেচ করার দরকার নেই
+        if (sessionPending || !session) return;
         fetchRequest();
-    }, [resolvedId]);
+    }, [resolvedId, sessionPending, session]);
 
-    // ✅ Modal এর ভেতরের Confirm বাটনে click করলে এটা চলবে
-    // `close` হলো Modal.Dialog এর render prop থেকে পাওয়া close ফাংশন
+    // ✅ Confirm বাটনে click করলে — name/email এখন session থেকে আসছে, ইনপুট থেকে না
     const handleConfirmDonation = async (close) => {
-        if (!donorName.trim() || !donorEmail.trim()) {
-            toast.error("নাম এবং ইমেইল দুটোই দিতে হবে");
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(donorEmail.trim())) {
-            toast.error("সঠিক ইমেইল ফরম্যাট দাও");
+        if (!session?.user?.name || !session?.user?.email) {
+            toast.error("তোমার account এর তথ্য পাওয়া যায়নি, আবার login করো");
             return;
         }
 
@@ -75,8 +78,8 @@ export default function DonationRequestDetailClient({ params, id }) {
                     method: "PATCH",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({
-                        donorName: donorName.trim(),
-                        donorEmail: donorEmail.trim(),
+                        donorName: session.user.name,
+                        donorEmail: session.user.email,
                     }),
                 }
             );
@@ -87,12 +90,11 @@ export default function DonationRequestDetailClient({ params, id }) {
                 throw new Error(result.message || "Failed to confirm donation");
             }
 
-            // ✅ লোকাল state এও status আপডেট করা, রিফ্রেশ ছাড়াই UI তে দেখা যাবে
             setRequest((prev) => ({
                 ...prev,
                 status: "In Progress",
-                donorName: donorName.trim(),
-                donorEmail: donorEmail.trim(),
+                donorName: session.user.name,
+                donorEmail: session.user.email,
             }));
 
             toast.success(
@@ -100,8 +102,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                 { duration: 4000 }
             );
 
-            setDonorName("");
-            setDonorEmail("");
             close();
             setIsModalOpen(false);
         } catch (error) {
@@ -111,6 +111,17 @@ export default function DonationRequestDetailClient({ params, id }) {
             setDonating(false);
         }
     };
+
+    // ✅ session চেক হওয়ার আগে বা redirect হওয়ার সময় কিছু render না করা
+    if (sessionPending || !session) {
+        return (
+            <div className="min-h-screen bg-[#FFF8F6] flex items-center justify-center">
+                <div className="text-[#800020] font-bold text-lg animate-pulse">
+                    Checking login status...
+                </div>
+            </div>
+        );
+    }
 
     if (loading) {
         return (
@@ -133,7 +144,6 @@ export default function DonationRequestDetailClient({ params, id }) {
         );
     }
 
-    // ✅ status default "Pending", আর সেই অনুযায়ী badge color
     const status = request.status || "Pending";
     const isInProgress = status === "In Progress";
 
@@ -145,10 +155,8 @@ export default function DonationRequestDetailClient({ params, id }) {
         <>
             <Toaster position="top-right" />
 
-            {/* মেইন কন্টেইনার */}
             <div className="min-h-screen bg-[#FFF8F6] py-8 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-6xl mx-auto">
-                    {/* ব্যাক বাটন */}
                     <Link
                         href="/blood-donation"
                         className="inline-flex items-center gap-2 text-[#800020] hover:text-[#600018] font-semibold mb-8 transition-colors"
@@ -157,11 +165,9 @@ export default function DonationRequestDetailClient({ params, id }) {
                         Back to Requests
                     </Link>
 
-                    {/* মেইন গ্রিড - 2 কলাম */}
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         {/* বাম সাইড - ডিটেইলস (2/3) */}
                         <div className="lg:col-span-2 space-y-6">
-                            {/* হেডার কার্ড */}
                             <Card className="overflow-hidden border border-gray-100 bg-white">
                                 <div className="bg-gradient-to-r from-[#FDF0F0] to-[#FFE8E8] p-8 border-b border-red-100">
                                     <div className="flex items-start justify-between mb-6">
@@ -171,7 +177,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                             </h1>
                                             <p className="text-gray-600 mt-2">Blood Group Required</p>
                                         </div>
-                                        {/* ✅ আগের hardcoded "Urgent" এর বদলে real status badge */}
                                         <span
                                             className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}
                                         >
@@ -179,7 +184,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                         </span>
                                     </div>
 
-                                    {/* রিসিপিয়েন্ট ইনফো */}
                                     <h2 className="text-3xl font-bold text-gray-900 mb-2">
                                         {request.recipientName}
                                     </h2>
@@ -191,9 +195,7 @@ export default function DonationRequestDetailClient({ params, id }) {
                                     </p>
                                 </div>
 
-                                {/* ডিটেইলস বডি */}
                                 <div className="p-8 space-y-8">
-                                    {/* রিকোয়েস্ট মেসেজ */}
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">
                                             Request Message
@@ -206,7 +208,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                         </div>
                                     </div>
 
-                                    {/* হাসপাটাল ইনফরমেশন */}
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">
                                             Hospital Information
@@ -245,7 +246,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                         </div>
                                     </div>
 
-                                    {/* ডেট এবং টাইম */}
                                     <div>
                                         <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">
                                             Donation Timing
@@ -270,7 +270,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                         </div>
                                     </div>
 
-                                    {/* ✅ ইতিমধ্যে কেউ confirm করলে তার তথ্য দেখানো */}
                                     {isInProgress && request.donorName && (
                                         <div>
                                             <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">
@@ -291,13 +290,11 @@ export default function DonationRequestDetailClient({ params, id }) {
                         {/* ডান সাইড - অ্যাকশন প্যানেল (1/3) */}
                         <div className="lg:col-span-1">
                             <Card className="overflow-hidden border border-gray-100 bg-white sticky top-8">
-                                {/* ব্লাড গ্রুপ ডিসপ্লে */}
                                 <div className="bg-gradient-to-br from-[#800020] to-[#600018] p-8 text-white text-center">
                                     <p className="text-xs font-bold uppercase tracking-widest mb-2">Need</p>
                                     <h2 className="text-6xl font-black">{request.bloodGroup}</h2>
                                 </div>
 
-                                {/* রিকোয়েস্টার ইনফো */}
                                 <div className="p-6 border-b border-gray-100">
                                     <p className="text-xs font-bold text-gray-700 uppercase mb-4">
                                         Requester
@@ -321,7 +318,7 @@ export default function DonationRequestDetailClient({ params, id }) {
                                     </div>
                                 </div>
 
-                                {/* ✅ Donate Now বাটন + Modal — v3 তে দুটো একসাথে <Modal> এর ভেতরে থাকে */}
+                                {/* ✅ Donate Now বাটন + Modal */}
                                 <div className="p-6">
                                     <Modal>
                                         <Button
@@ -343,47 +340,32 @@ export default function DonationRequestDetailClient({ params, id }) {
 
                                                             <Modal.Body className="space-y-4">
                                                                 <p className="text-sm text-gray-600">
-                                                                    তোমার নাম এবং ইমেইল দাও, requester তোমার সাথে
-                                                                    যোগাযোগ করবে।
+                                                                    নিচের তথ্য দিয়ে তুমি এই request এর জন্য
+                                                                    donate করতে চাচ্ছো বলে confirm করছো।
                                                                 </p>
 
-                                                                <TextField
-                                                                    className="w-full"
-                                                                    name="donorName"
-                                                                    isRequired
-                                                                >
-                                                                    <Label>Your Name</Label>
-                                                                    <Input
-                                                                        placeholder="John Doe"
-                                                                        value={donorName}
-                                                                        onChange={(e) =>
-                                                                            setDonorName(e.target.value)
-                                                                        }
-                                                                    />
-                                                                </TextField>
+                                                                {/* ✅ Read-only — logged-in user এর session থেকে */}
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                                                                        Donor Name
+                                                                    </p>
+                                                                    <p className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                                                                        {session.user.name}
+                                                                    </p>
+                                                                </div>
 
-                                                                <TextField
-                                                                    className="w-full"
-                                                                    name="donorEmail"
-                                                                    type="email"
-                                                                    isRequired
-                                                                >
-                                                                    <Label>Your Email</Label>
-                                                                    <Input
-                                                                        placeholder="john@example.com"
-                                                                        value={donorEmail}
-                                                                        onChange={(e) =>
-                                                                            setDonorEmail(e.target.value)
-                                                                        }
-                                                                    />
-                                                                </TextField>
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                                                                        Donor Email
+                                                                    </p>
+                                                                    <p className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                                                                        {session.user.email}
+                                                                    </p>
+                                                                </div>
                                                             </Modal.Body>
 
                                                             <Modal.Footer>
-                                                                <Button
-                                                                    slot="close"
-                                                                    isDisabled={donating}
-                                                                >
+                                                                <Button slot="close" isDisabled={donating}>
                                                                     Cancel
                                                                 </Button>
                                                                 <Button

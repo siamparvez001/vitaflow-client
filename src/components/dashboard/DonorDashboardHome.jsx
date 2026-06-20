@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState, useMemo } from 'react';
 import { StatCard } from './StatCard';
-import DonationTable from './DonationTable';
+import RecentDonationRequests from './RecentDonationRequests';
 import { useSession } from "@/lib/auth-client";
 
 export default function DonorDashboardHome() {
@@ -10,18 +10,20 @@ export default function DonorDashboardHome() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
+    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+
     useEffect(() => {
         if (!session?.user?.email) return;
 
         const fetchRequests = async () => {
             try {
                 const response = await fetch(
-                    `${process.env.NEXT_PUBLIC_BASE_URL}/api/my-donation-requests?email=${session.user.email}`
+                    `${baseUrl}/api/my-donation-requests?email=${session.user.email}`
                 );
 
                 const data = await response.json();
 
-                setRequests(data);
+                setRequests(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error(error);
             } finally {
@@ -32,9 +34,10 @@ export default function DonorDashboardHome() {
         fetchRequests();
     }, [session]);
 
-    // ✅ real `requests` ডাটা থেকে stats বের করা হচ্ছে (আর hardcoded না)
+    // ✅ real `requests` ডাটা থেকে stats বের করা হচ্ছে
     const stats = useMemo(() => {
-        const pendingCount = requests.filter((r) => r.status === "Active").length;
+        // ✅ FIX: status এখন backend এ default "Pending", আগে ভুলভাবে "Active" দিয়ে ফিল্টার হচ্ছিল
+        const pendingCount = requests.filter((r) => r.status === "Pending").length;
 
         const sortedByDate = [...requests].sort(
             (a, b) => new Date(b.donationDate) - new Date(a.donationDate)
@@ -76,19 +79,13 @@ export default function DonorDashboardHome() {
                 <StatCard title="Last Donation" count={stats.lastDonation} />
                 {/*
                   ⚠️ "Lives Saved" এর জন্য বর্তমান backend schema তে কোনো field নেই।
-                  এটা ভিন্ন ধরনের ডাটা — donor হিসেবে তুমি আসলে কতজনকে রক্ত দিয়েছো
-                  (donation history), যেটা এখনকার "create-donation-request" কালেকশনে
-                  ট্র্যাক হয় না (ওটা request collection, donation history না)।
                   পরে backend এ এই field/collection যোগ করলে এখানে বসিয়ে দিও।
                 */}
                 <StatCard title="Lives Saved" count="—" />
             </div>
 
-            {/* Recent Donation Requests টেবিল — এটা আগে থেকেই real data ব্যবহার করছিল */}
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
-                <h2 className="text-xl font-bold mb-4">Recent Donation Requests</h2>
-                <DonationTable data={requests} />
-            </div>
+            {/* ✅ প্রথম ৩টা donation request + See More বাটন */}
+            <RecentDonationRequests data={requests} limit={3} />
         </div>
     );
 }

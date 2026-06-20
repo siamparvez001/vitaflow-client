@@ -6,7 +6,6 @@ import { FiSend, FiCheckCircle } from "react-icons/fi";
 import { bloodRequest } from "@/lib/actions/blood_request";
 import toast from "react-hot-toast";
 
-// import { redirect } from "next/navigation";
 
 export default function CreateDonationRequest() {
     const { data: session, isPending } = useSession();

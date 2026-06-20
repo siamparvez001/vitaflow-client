@@ -11,11 +11,11 @@ export default function DonationRequestClient() {
 
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
 
-    // Backend থেকে সব ডোনেশন রিকোয়েস্ট ফেচ করা
+    
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${baseUrl}/api/create-donation-request`);
+            const res = await fetch(`${baseUrl}/api/create-donation-request?status=Pending`);
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
@@ -31,7 +31,6 @@ export default function DonationRequestClient() {
         }
     };
 
-    // Component mount হলে ডাটা ফেচ করো
     useEffect(() => {
         fetchRequests();
     }, []);
