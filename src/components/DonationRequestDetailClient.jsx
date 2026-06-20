@@ -9,10 +9,15 @@ import { toast, Toaster } from "react-hot-toast";
 import { useSession } from "@/lib/auth-client";
 
 export default function DonationRequestDetailClient({ params, id }) {
-    const resolvedId = id || use(params).id;
+    // ✅ params থাকলে এবং সেটা Promise হলে use() দিয়ে resolve করো,
+    // params undefined/null হলে use() কল করার দরকার নেই — সরাসরি id তে fallback করবে
+    const resolvedParams =
+        params && typeof params.then === "function" ? use(params) : params;
+
+    const resolvedId = id || resolvedParams?.id;
+
     const router = useRouter();
 
-    // ✅ session লোড হওয়ার আগ পর্যন্ত isPending true থাকে
     const { data: session, isPending: sessionPending } = useSession();
 
     const [request, setRequest] = useState(null);
@@ -20,10 +25,6 @@ export default function DonationRequestDetailClient({ params, id }) {
     const [donating, setDonating] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
-    // ✅ Private route guard — login session না থাকলে login page এ পাঠানো হবে।
-    // client component এ next/navigation এর redirect() কাজ করে না, তাই useRouter().push() ব্যবহার করছি।
     useEffect(() => {
         if (!sessionPending && !session) {
             router.push("/auth/signin");
@@ -31,23 +32,23 @@ export default function DonationRequestDetailClient({ params, id }) {
     }, [sessionPending, session, router]);
 
     const fetchRequest = async () => {
+        // ✅ resolvedId না থাকলে fetch ই করবো না, নাহলে /api/.../undefined hit হবে
+        if (!resolvedId) {
+            setLoading(false);
+            toast.error("Invalid request ID");
+            return;
+        }
+
         try {
             setLoading(true);
-            const res = await fetch(`${baseUrl}/api/create-donation-request`);
+            const res = await fetch(`/api/internal/donation-request-detail/${resolvedId}`);
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
 
             const data = await res.json();
-            const foundRequest = data.find((req) => req._id === resolvedId);
-
-            if (!foundRequest) {
-                toast.error("Request not found");
-                return;
-            }
-
-            setRequest(foundRequest);
+            setRequest(data);
         } catch (error) {
             console.error("Error fetching request:", error);
             toast.error("Failed to load request details");
@@ -57,12 +58,10 @@ export default function DonationRequestDetailClient({ params, id }) {
     };
 
     useEffect(() => {
-        // ✅ যতক্ষণ session resolve না হচ্ছে বা session নেই, ডাটা ফেচ করার দরকার নেই
         if (sessionPending || !session) return;
         fetchRequest();
     }, [resolvedId, sessionPending, session]);
 
-    // ✅ Confirm বাটনে click করলে — name/email এখন session থেকে আসছে, ইনপুট থেকে না
     const handleConfirmDonation = async (close) => {
         if (!session?.user?.name || !session?.user?.email) {
             toast.error("তোমার account এর তথ্য পাওয়া যায়নি, আবার login করো");
@@ -72,17 +71,9 @@ export default function DonationRequestDetailClient({ params, id }) {
         try {
             setDonating(true);
 
-            const res = await fetch(
-                `${baseUrl}/api/create-donation-request/donate/${request._id}`,
-                {
-                    method: "PATCH",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        donorName: session.user.name,
-                        donorEmail: session.user.email,
-                    }),
-                }
-            );
+            const res = await fetch(`/api/internal/donate/${request._id}`, {
+                method: "PATCH",
+            });
 
             const result = await res.json();
 
@@ -112,7 +103,6 @@ export default function DonationRequestDetailClient({ params, id }) {
         }
     };
 
-    // ✅ session চেক হওয়ার আগে বা redirect হওয়ার সময় কিছু render না করা
     if (sessionPending || !session) {
         return (
             <div className="min-h-screen bg-[#FFF8F6] flex items-center justify-center">
@@ -166,7 +156,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                     </Link>
 
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                        {/* বাম সাইড - ডিটেইলস (2/3) */}
                         <div className="lg:col-span-2 space-y-6">
                             <Card className="overflow-hidden border border-gray-100 bg-white">
                                 <div className="bg-gradient-to-r from-[#FDF0F0] to-[#FFE8E8] p-8 border-b border-red-100">
@@ -287,7 +276,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                             </Card>
                         </div>
 
-                        {/* ডান সাইড - অ্যাকশন প্যানেল (1/3) */}
                         <div className="lg:col-span-1">
                             <Card className="overflow-hidden border border-gray-100 bg-white sticky top-8">
                                 <div className="bg-gradient-to-br from-[#800020] to-[#600018] p-8 text-white text-center">
@@ -318,7 +306,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                     </div>
                                 </div>
 
-                                {/* ✅ Donate Now বাটন + Modal */}
                                 <div className="p-6">
                                     <Modal>
                                         <Button
@@ -344,7 +331,6 @@ export default function DonationRequestDetailClient({ params, id }) {
                                                                     donate করতে চাচ্ছো বলে confirm করছো।
                                                                 </p>
 
-                                                                {/* ✅ Read-only — logged-in user এর session থেকে */}
                                                                 <div>
                                                                     <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
                                                                         Donor Name
