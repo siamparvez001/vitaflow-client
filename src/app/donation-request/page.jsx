@@ -1,5 +1,3 @@
-// components/DonationRequest.jsx - পুরো code replace করো
-
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
@@ -11,12 +9,16 @@ export default function DonationRequest() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
     const fetchRequests = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${baseUrl}/api/create-donation-request`);
+
+            // ✅ আগে সরাসরি Express কে (`${baseUrl}/api/create-donation-request`)
+            // ব্রাউজার থেকে কল করা হতো - কিন্তু ১) ওই route এখন Admin/Volunteer-only
+            // protected, ২) এটা পাবলিক পেজ হওয়ায় internal secret ব্রাউজারে থাকাও
+            // উচিত না। তাই এখন নিজের Next.js internal route কল করছি, যেটা ভিতরে
+            // গিয়ে Express এর পাবলিক endpoint (শুধু Pending request) কল করে।
+            const res = await fetch("/api/internal/public-donation-requests");
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);

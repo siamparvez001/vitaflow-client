@@ -18,7 +18,38 @@ export const auth = betterAuth({
                 type: "string",
                 required: false,
                 defaultValue: "Donor",
-                input: false, // ইউজার নিজে signup করার সময় role সেট করতে পারবে না
+                input: false,
+            },
+            image: {
+                type: "string",
+                required: false,
+                input: true,
+            },
+            status: {
+                type: "string",
+                required: false,
+                defaultValue: "Active",
+                input: false,
+            },
+            data: {
+                type: "object",
+                required: false,
+                input: true,
+                // ✅ Nested fields
+                fields: {
+                    bloodGroup: {
+                        type: "string",
+                        required: false,
+                    },
+                    district: {
+                        type: "string",
+                        required: false,
+                    },
+                    upazila: {
+                        type: "string",
+                        required: false,
+                    },
+                }
             },
         },
     },

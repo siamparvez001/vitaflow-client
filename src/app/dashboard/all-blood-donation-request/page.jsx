@@ -1,34 +1,17 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
-import { redirect } from "next/navigation";
+// src/app/dashboard/all-blood-donation-request/page.js
+import { requireRole } from "@/lib/actions/roleCheck";
+import { serverFetch } from "@/lib/core/server";
 import DonationRequestTableClient from "./DonationRequestTableClient";
 
-const baseUrl = process.env.NEXT_PUBLIC_BASE_URL;
-
 export default async function AllBloodDonationRequestPage() {
-    const session = await auth.api.getSession({
-        headers: await headers()
-    });
+    // ✅ শুধু Admin আর Volunteer এই পেজে ঢুকতে পারবে, Donor না।
+    // requireRole নিজেই session না থাকলে /auth/signin এ,
+    // ভুল role হলে /unauthorized এ পাঠিয়ে দেয়।
+    const session = await requireRole(["Admin", "Volunteer"]);
 
-    if (!session) {
-        redirect("/auth/login");
-    }
-
-    const allowedRoles = ["Admin", "Volunteer", "Donor"];
-
-    if (!allowedRoles.includes(session.user.role)) {
-        redirect("/dashboard");
-    }
-
-    // API Call
-    const res = await fetch(
-        `${baseUrl}/api/create-donation-request`,
-        {
-            cache: "no-store",
-        }
-    );
-
-    const requests = await res.json();
+    // ✅ serverFetch ব্যবহার করছি - এটা automatically internal secret
+    // + user email/role হেডার পাঠায়, যা Express backend যাচাই করে।
+    const requests = await serverFetch("/api/create-donation-request");
 
     return (
         <DonationRequestTableClient

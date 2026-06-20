@@ -1,7 +1,6 @@
 "use client";
 import React, { useEffect, useState, useMemo } from 'react';
 import { StatCard } from './StatCard';
-// import RecentDonationRequests from './RecentDonationRequests';
 import { useSession } from "@/lib/auth-client";
 import RecentDonationRequests from './RecentDonationRequests';
 
@@ -12,18 +11,20 @@ export default function AdminDashboardHome() {
     const [donationRequests, setDonationRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const [usersRes, requestsRes] = await Promise.all([
-                    fetch(`${baseUrl}/api/all-users`),
-                    fetch(`${baseUrl}/api/create-donation-request`),
-                ]);
+                // ✅ আগে সরাসরি Express (baseUrl) কে কল করা হতো ব্রাউজার থেকে -
+                // এখন নিজের Next.js এর internal route কে কল করছি, যেটা ভিতরে
+                // গিয়ে secret সহ Express কে কল করে। internal secret ব্রাউজারে
+                // exposed হয় না এভাবে।
+                const res = await fetch("/api/internal/dashboard-data?type=admin");
 
-                const usersData = await usersRes.json();
-                const requestsData = await requestsRes.json();
+                if (!res.ok) {
+                    throw new Error("Failed to fetch admin dashboard data");
+                }
+
+                const { users: usersData, requests: requestsData } = await res.json();
 
                 setUsers(Array.isArray(usersData) ? usersData : []);
                 setDonationRequests(Array.isArray(requestsData) ? requestsData : []);
@@ -35,14 +36,12 @@ export default function AdminDashboardHome() {
         };
 
         fetchData();
-    }, [baseUrl]);
+    }, []);
 
-    // ✅ real users + donation request ডাটা থেকে stats বের করা হচ্ছে
     const stats = useMemo(() => {
         const totalUsers = users.length;
         const totalAdmins = users.filter((u) => u.role === "Admin").length;
         const totalVolunteers = users.filter((u) => u.role === "Volunteer").length;
-        // ✅ FIX: status এখন backend এ default "Pending", আগে ভুলভাবে "Active" দিয়ে ফিল্টার হচ্ছিল
         const pendingRequests = donationRequests.filter((r) => r.status === "Pending").length;
 
         return { totalUsers, totalAdmins, totalVolunteers, pendingRequests };
@@ -50,7 +49,6 @@ export default function AdminDashboardHome() {
 
     if (loading) return <div className="p-8">Loading...</div>;
 
-    // ✅ session থেকে real নাম
     const adminName = session?.user?.name || "Admin";
 
     return (
@@ -67,7 +65,6 @@ export default function AdminDashboardHome() {
                 <StatCard title="Pending Donation Requests" count={stats.pendingRequests} />
             </div>
 
-            {/* ✅ প্রথম ৩টা donation request + See More বাটন */}
             <RecentDonationRequests data={donationRequests} limit={3} />
         </div>
     );

@@ -91,10 +91,13 @@ export default function SearchDonors() {
                 upazila: selectedUpazila,
             });
 
-            // 🔧 BACKEND URL - Change এটা অনুযায়ী তোর backend
-            const backendUrl = "http://localhost:5000"; // ← এখানে change করো যদি backend অন্য জায়গায় থাকে
-            const apiUrl = `${backendUrl}/api/search-donors?${query.toString()}`;
-            
+            // ✅ আগে সরাসরি Express কে (`http://localhost:5000/api/search-donors`)
+            // ব্রাউজার থেকে কল করা হতো - কিন্তু Express এখন internal secret
+            // ছাড়া কোনো request accept করে না। তাই এখন নিজের Next.js এর
+            // internal route কল করছি, যেটা ভিতরে গিয়ে secret সহ Express কে
+            // কল করে।
+            const apiUrl = `/api/internal/search-donors?${query.toString()}`;
+
             console.log("🔍 Searching donors with URL:", apiUrl);
             console.log("📊 Query params:", {
                 bloodGroup: selectedBloodGroup,
@@ -126,18 +129,18 @@ export default function SearchDonors() {
             }
         } catch (error) {
             console.error("❌ Search error:", error.message);
-            
+
             // Better error messages
             if (error.message.includes("Failed to fetch")) {
                 toast.error(
-                    "Cannot connect to backend. Is it running on localhost:5000?"
+                    "Cannot connect to server. Please try again."
                 );
             } else if (error.message.includes("API Error")) {
                 toast.error(error.message);
             } else {
                 toast.error("Something went wrong while searching");
             }
-            
+
             setDonors([]);
         } finally {
             setIsLoading(false);

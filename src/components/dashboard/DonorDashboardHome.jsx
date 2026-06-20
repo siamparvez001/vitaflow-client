@@ -10,19 +10,19 @@ export default function DonorDashboardHome() {
     const [requests, setRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
     useEffect(() => {
         if (!session?.user?.email) return;
 
         const fetchRequests = async () => {
             try {
-                const response = await fetch(
-                    `${baseUrl}/api/my-donation-requests?email=${session.user.email}`
-                );
+                // ✅ Express কে সরাসরি না কল করে নিজের Next.js internal route কল করছি
+                const res = await fetch("/api/internal/dashboard-data?type=donor");
 
-                const data = await response.json();
+                if (!res.ok) {
+                    throw new Error("Failed to fetch donor dashboard data");
+                }
 
+                const { requests: data } = await res.json();
                 setRequests(Array.isArray(data) ? data : []);
             } catch (error) {
                 console.error(error);
@@ -34,9 +34,7 @@ export default function DonorDashboardHome() {
         fetchRequests();
     }, [session]);
 
-    // ✅ real `requests` ডাটা থেকে stats বের করা হচ্ছে
     const stats = useMemo(() => {
-        // ✅ FIX: status এখন backend এ default "Pending", আগে ভুলভাবে "Active" দিয়ে ফিল্টার হচ্ছিল
         const pendingCount = requests.filter((r) => r.status === "Pending").length;
 
         const sortedByDate = [...requests].sort(
@@ -60,7 +58,6 @@ export default function DonorDashboardHome() {
 
     if (loading) return <div>Loading...</div>;
 
-    // ✅ session থেকে real নাম, hardcoded "Sarah Ahmed" এর বদলে
     const userName = session?.user?.name || "Donor";
 
     return (
@@ -72,19 +69,13 @@ export default function DonorDashboardHome() {
                 </p>
             </div>
 
-            {/* ৪টি কার্ড সেকশন — এখন real ডাটা থেকে আসছে */}
             <div className="grid grid-cols-4 gap-6 mb-10">
                 <StatCard title="Total Requests" count={stats.totalRequests} />
                 <StatCard title="Pending Requests" count={stats.pendingCount} />
                 <StatCard title="Last Donation" count={stats.lastDonation} />
-                {/*
-                  ⚠️ "Lives Saved" এর জন্য বর্তমান backend schema তে কোনো field নেই।
-                  পরে backend এ এই field/collection যোগ করলে এখানে বসিয়ে দিও।
-                */}
                 <StatCard title="Lives Saved" count="—" />
             </div>
 
-            {/* ✅ প্রথম ৩টা donation request + See More বাটন */}
             <RecentDonationRequests data={requests} limit={3} />
         </div>
     );

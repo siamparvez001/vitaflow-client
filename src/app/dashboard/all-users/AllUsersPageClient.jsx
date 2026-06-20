@@ -1,3 +1,4 @@
+// src/app/dashboard/all-users/AllUsersPageClient.jsx
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Image from "next/image";
@@ -13,11 +14,13 @@ export default function AllUsersPageClient() {
     const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
     const dropdownRef = useRef(null);
 
-    // ব্যাকএন্ড থেকে সব ইউজার ডাটা ফেচ করা
+    // ✅ Backend থেকে সব ইউজার ডাটা fetch করো
     const fetchUsers = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${baseUrl}/api/all-users`);
+            
+            // ✅ Internal API call করার জন্য
+            const res = await fetch(`/api/internal/all-users`);
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
@@ -33,12 +36,12 @@ export default function AllUsersPageClient() {
         }
     };
 
-    // Component mount হলে ডাটা ফেচ করো
+    // Component mount হলে ডাটা fetch করো
     useEffect(() => {
         fetchUsers();
     }, []);
 
-    // বাইরে ক্লিক করলে ড্রপডাউন বন্ধ করা
+    // বাইরে ক্লিক করলে ড্রপডাউন বন্ধ করো
     useEffect(() => {
         function handleClickOutside(event) {
             if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
@@ -55,7 +58,7 @@ export default function AllUsersPageClient() {
         setActiveDropdown(activeDropdown === id ? null : id);
     };
 
-    // ইউজার অ্যাকশন হ্যান্ডলার (Block/Unblock/Role)
+    // ইউজার অ্যাকশন হ্যান্ডলার
     const handleAction = async (userId, actionType) => {
         setActiveDropdown(null);
         try {
@@ -63,16 +66,16 @@ export default function AllUsersPageClient() {
             let bodyData = {};
 
             if (actionType === "block") {
-                url = `${baseUrl}/api/all-users/status/${userId}`;
+                url = `/api/internal/user-status/${userId}`;
                 bodyData = { status: "Blocked" };
             } else if (actionType === "unblock") {
-                url = `${baseUrl}/api/all-users/status/${userId}`;
+                url = `/api/internal/user-status/${userId}`;
                 bodyData = { status: "Active" };
             } else if (actionType === "make_volunteer") {
-                url = `${baseUrl}/api/all-users/role/${userId}`;
+                url = `/api/internal/user-role/${userId}`;
                 bodyData = { role: "Volunteer" };
             } else if (actionType === "make_admin") {
-                url = `${baseUrl}/api/all-users/role/${userId}`;
+                url = `/api/internal/user-role/${userId}`;
                 bodyData = { role: "Admin" };
             }
 

@@ -1,22 +1,19 @@
-import { auth } from "@/lib/auth";
-import { headers } from "next/headers";
+// src/app/dashboard/page.js
+import { requireAuth } from "@/lib/actions/roleCheck";
 import DonorDashboardHome from "@/components/dashboard/DonorDashboardHome";
 import VolunteerDashboardHome from "@/components/dashboard/VolunteerDashboardHome";
 import AdminDashboardHome from "@/components/dashboard/AdminDashboardHome";
-// import AdminDashboardHome from "@/components/dashboard/AdminDashboardHome";
 
 export default async function DashboardPage() {
-    const session = await auth.api.getSession({ headers: await headers() });
-    const role = session?.user?.role; // ডাটাবেজে ইউজারের রোল চেক করুন
+    // ✅ লগইন ছাড়া কেউ /dashboard এ ঢুকতেই পারবে না।
+    const session = await requireAuth();
+    const role = session.user?.role;
 
     return (
         <div className="bg-[#FCE8E9] text-black min-h-screen">
-            {role === 'Admin' && <AdminDashboardHome />}
-            {role === 'Volunteer' && <VolunteerDashboardHome />}
-            {role === 'Donor' && <DonorDashboardHome />}
-
-            {/* যদি রোল না থাকে বা অন্য কিছু হয় */}
-            {!role && <p>Loading or Access Denied...</p>}
+            {role === "Admin" && <AdminDashboardHome />}
+            {role === "Volunteer" && <VolunteerDashboardHome />}
+            {role === "Donor" && <DonorDashboardHome />}
         </div>
     );
 }

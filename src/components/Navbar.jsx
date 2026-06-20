@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import NextLink from "next/link";
 import { Button, Avatar, Dropdown, Label } from "@heroui/react";
 import Image from "next/image";
@@ -13,15 +14,26 @@ import { MdDashboard } from "react-icons/md";
 
 export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
+    const router = useRouter();
     const { data: session, isPending } = useSession();
     console.log("Session data is navbar:", session, "Is pending:", isPending)
     const user = session?.user;
 
 
+    // ✅ আগে শুধু signOut() কল হতো, কিন্তু কোথাও redirect করা হতো না -
+    // তাই sign out হয়ে গেলেও একই page এ থেকে যেতে। এখন onSuccess callback এ
+    // router.push() দিয়ে signin page এ পাঠানো হচ্ছে, আর router.refresh() দিয়ে
+    // server component গুলোর (dashboard/layout.js ইত্যাদি) cached session
+    // force-revalidate করানো হচ্ছে।
     const handleSignOut = async () => {
-        const data = await signOut();
-
-        console.log(data);
+        await signOut({
+            fetchOptions: {
+                onSuccess: () => {
+                    router.push("/auth/signin");
+                    router.refresh();
+                },
+            },
+        });
     };
 
 
@@ -208,23 +220,38 @@ export default function Navbar() {
                             </NextLink>
                         ))}
 
-                        <NextLink
-                            href="/auth/signin"
-                            className="text-base font-medium text-zinc-700"
-                            onClick={() => setIsMenuOpen(false)}
-                        >
-                            Login
-                        </NextLink>
+                        {user ? (
+                            <button
+                                onClick={() => {
+                                    setIsMenuOpen(false);
+                                    handleSignOut();
+                                }}
+                                className="flex items-center gap-2 text-base font-medium text-red-600 text-left"
+                            >
+                                <BiLogOut />
+                                Logout
+                            </button>
+                        ) : (
+                            <>
+                                <NextLink
+                                    href="/auth/signin"
+                                    className="text-base font-medium text-zinc-700"
+                                    onClick={() => setIsMenuOpen(false)}
+                                >
+                                    Login
+                                </NextLink>
 
-                        <Button
-                            as={NextLink}
-                            href="/register"
-                            color="danger"
-                            fullWidth
-                            onPress={() => setIsMenuOpen(false)}
-                        >
-                            Join as Donor
-                        </Button>
+                                <Button
+                                    as={NextLink}
+                                    href="/register"
+                                    color="danger"
+                                    fullWidth
+                                    onPress={() => setIsMenuOpen(false)}
+                                >
+                                    Join as Donor
+                                </Button>
+                            </>
+                        )}
                     </div>
                 </div>
             )}

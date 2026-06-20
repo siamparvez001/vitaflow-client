@@ -141,8 +141,6 @@ export default function UserProfile({ initialDbData }) {
     };
 
     // Save Profile Handler
-    // Save Profile Handler (UserProfile.jsx এর ভেতরে)
-    // Save Profile Handler (UserProfile.jsx ফাইলের ভেতরে)
     const handleSave = async (e) => {
         e.preventDefault();
 
@@ -154,18 +152,19 @@ export default function UserProfile({ initialDbData }) {
         setIsLoading(true);
         setLoadingText('Saving profile...');
 
-        // ১. এখানে baseUrl টি নিয়ে নিলাম (যদি env ফাইলে না থাকে তবে সরাসরি localhost:5000 পাবে)
-        const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
         try {
-            // ২. fetch কলটিতে সম্পূর্ণ URL দিয়ে দেওয়া হলো
-            const response = await fetch(`${baseUrl}/api/profile`, {
+            // ✅ আগে সরাসরি Express কে (`${baseUrl}/api/profile`) ব্রাউজার থেকে
+            // কল করা হতো - কিন্তু Express এখন internal secret ছাড়া কোনো
+            // request accept করে না। তাই এখন নিজের Next.js internal route
+            // কল করছি, যেটা ভিতরে গিয়ে secret সহ Express কে কল করে।
+            // (পাশাপাশি, email এখন client থেকে না পাঠিয়ে route নিজেই
+            // session থেকে নেয়, তাই কেউ অন্য কারো প্রোফাইল আপডেট করতে পারবে না)
+            const response = await fetch('/api/internal/profile', {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    email: profileData.email, // ব্যাকএন্ডের ইউজার চেনার জন্য ইমেইল
                     name: profileData.name,
                     image: profileData.image,
                     data: {

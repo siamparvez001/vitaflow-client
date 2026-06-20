@@ -1,11 +1,16 @@
-import { DashboardSidebar } from '@/components/dashboard/DashboardSidebar';
-import React from 'react';
+// src/app/dashboard/layout.js
+import { DashboardSidebar } from "@/components/dashboard/DashboardSidebar";
+import { requireActiveDashboardAccess } from "@/lib/actions/roleCheck";  // ✅ Change করলাম
 
-const DashboardLayout = ({ children }) => {
+
+const DashboardLayout = async ({ children }) => {
+    
+    await requireActiveDashboardAccess();  // ✅ Change করলাম
+
     return (
         <div className="flex min-h-screen">
-            <DashboardSidebar></DashboardSidebar>
-            <div className='flex-1'>{children}</div>
+            <DashboardSidebar />
+            <div className="flex-1">{children}</div>
         </div>
     );
 };

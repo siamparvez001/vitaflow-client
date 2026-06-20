@@ -10,14 +10,18 @@ export default function VolunteerDashboardHome() {
     const [donationRequests, setDonationRequests] = useState([]);
     const [loading, setLoading] = useState(true);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
-
     useEffect(() => {
         const fetchRequests = async () => {
             try {
-                const res = await fetch(`${baseUrl}/api/create-donation-request`);
-                const data = await res.json();
-                setDonationRequests(Array.isArray(data) ? data : []);
+                // ✅ Express কে সরাসরি না কল করে নিজের Next.js internal route কল করছি
+                const res = await fetch("/api/internal/dashboard-data?type=volunteer");
+
+                if (!res.ok) {
+                    throw new Error("Failed to fetch volunteer dashboard data");
+                }
+
+                const { requests } = await res.json();
+                setDonationRequests(Array.isArray(requests) ? requests : []);
             } catch (error) {
                 console.error("Volunteer dashboard data fetch error:", error);
             } finally {
@@ -26,12 +30,10 @@ export default function VolunteerDashboardHome() {
         };
 
         fetchRequests();
-    }, [baseUrl]);
+    }, []);
 
-    // ✅ real donation request ডাটা থেকে stats বের করা হচ্ছে
     const stats = useMemo(() => {
         const total = donationRequests.length;
-        // ✅ FIX: status এখন backend এ default "Pending", আগে ভুলভাবে "Active" দিয়ে ফিল্টার হচ্ছিল
         const pending = donationRequests.filter((r) => r.status === "Pending").length;
         const inProgress = donationRequests.filter((r) => r.status === "In Progress").length;
 
@@ -40,7 +42,6 @@ export default function VolunteerDashboardHome() {
 
     if (loading) return <div className="p-8">Loading...</div>;
 
-    // ✅ session থেকে real নাম
     const volunteerName = session?.user?.name || "Volunteer";
 
     return (
@@ -56,7 +57,6 @@ export default function VolunteerDashboardHome() {
                 <StatCard title="In Progress Requests" count={stats.inProgress} />
             </div>
 
-            {/* ✅ প্রথম ৩টা donation request + See More বাটন */}
             <RecentDonationRequests data={donationRequests} limit={3} />
         </div>
     );

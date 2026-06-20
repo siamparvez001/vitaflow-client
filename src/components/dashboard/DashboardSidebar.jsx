@@ -1,3 +1,4 @@
+// src/components/dashboard/DashboardSidebar.jsx
 "use client"
 import { useSession } from "@/lib/auth-client";
 import { usePathname } from "next/navigation";
@@ -28,33 +29,19 @@ export function DashboardSidebar() {
     const user = session?.user;
     console.log(user?.role)
 
-
     const navItems = [
         { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
         { icon: FiUser, href: "/dashboard/profile", label: "Profile" },
-        { icon: FiList, href: "/dashboard/donor/my-donation-requests", label: "My Requests" },
+        { icon: FiList, href: "/dashboard/my-donation-requests", label: "My Requests" },
         { icon: FiPlusCircle, href: "/dashboard/donor/create-donation-request", label: "Create Request" },
         { icon: FiCheckSquare, href: "/dashboard/all-blood-donation-request", label: "All Requests" },
     ];
 
+    // ✅ শুধু Admin এর জন্য
     if (user?.role === "Admin") {
         navItems.push({
             icon: FiUsers,
-            href: "/dashboard/admin/all-users",
-            label: "Manage Users",
-        });
-    }
-    if (user?.role === "Role") {
-        navItems.push({
-            icon: FiUsers,
-            href: "/dashboard/donor",
-            label: "Manage Users",
-        });
-    }
-    if (user?.role === "Volunteer") {
-        navItems.push({
-            icon: FiUsers,
-            href: "/dashboard/volunteer",
+            href: "/dashboard/all-users",
             label: "Manage Users",
         });
     }
@@ -115,7 +102,7 @@ export function DashboardSidebar() {
                         </div>
                     )}
 
-                    {/* 🚪 sign Out link (updated) */}
+                    {/* 🚪 sign Out link */}
                     {user && (
                         <Link
                             href="/auth/signin"

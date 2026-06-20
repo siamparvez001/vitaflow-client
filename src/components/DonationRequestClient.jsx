@@ -1,163 +1,390 @@
 "use client";
 import React, { useState, useEffect } from "react";
+import { use } from "react";
 import Link from "next/link";
-import { Card, Button } from "@heroui/react";
-import { FiMapPin, FiClock, FiDroplet, FiArrowRight } from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { Card, Button, Modal } from "@heroui/react";
+import { FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
+import { useSession } from "@/lib/auth-client";
 
-export default function DonationRequestClient() {
-    const [requests, setRequests] = useState([]);
+export default function DonationRequestDetailClient({ params, id }) {
+    const resolvedId = id || use(params).id;
+    const router = useRouter();
+
+    // ✅ session লোড হওয়ার আগ পর্যন্ত isPending true থাকে
+    const { data: session, isPending: sessionPending } = useSession();
+
+    const [request, setRequest] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [donating, setDonating] = useState(false);
+    const [isModalOpen, setIsModalOpen] = useState(false);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
+    // ✅ Private route guard — login session না থাকলে login page এ পাঠানো হবে।
+    // client component এ next/navigation এর redirect() কাজ করে না, তাই useRouter().push() ব্যবহার করছি।
+    useEffect(() => {
+        if (!sessionPending && !session) {
+            router.push("/auth/signin");
+        }
+    }, [sessionPending, session, router]);
 
-    
-    const fetchRequests = async () => {
+    const fetchRequest = async () => {
         try {
             setLoading(true);
-            const res = await fetch(`${baseUrl}/api/create-donation-request?status=Pending`);
+
+            // ✅ আগে পুরো লিস্ট (/api/create-donation-request) আনা হতো এবং
+            // ফ্রন্টএন্ডে খুঁজে বের করা হতো - কিন্তু ওই endpoint এখন
+            // Admin/Volunteer-only, তাই Donor হলে 403 পেতে। এখন single-item
+            // internal route ব্যবহার করছি যেটা যেকোনো logged-in user
+            // অ্যাক্সেস করতে পারে।
+            const res = await fetch(`/api/internal/donation-request-detail/${resolvedId}`);
 
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
 
             const data = await res.json();
-            setRequests(data);
+            setRequest(data);
         } catch (error) {
-            console.error("Error fetching requests:", error);
-            toast.error("Failed to load blood donation requests");
+            console.error("Error fetching request:", error);
+            toast.error("Failed to load request details");
         } finally {
             setLoading(false);
         }
     };
 
     useEffect(() => {
-        fetchRequests();
-    }, []);
+        // ✅ যতক্ষণ session resolve না হচ্ছে বা session নেই, ডাটা ফেচ করার দরকার নেই
+        if (sessionPending || !session) return;
+        fetchRequest();
+    }, [resolvedId, sessionPending, session]);
 
-    if (loading) {
+    // ✅ Confirm বাটনে click করলে — name/email এখন session থেকে আসছে, ইনপুট থেকে না
+    const handleConfirmDonation = async (close) => {
+        if (!session?.user?.name || !session?.user?.email) {
+            toast.error("তোমার account এর তথ্য পাওয়া যায়নি, আবার login করো");
+            return;
+        }
+
+        try {
+            setDonating(true);
+
+            // ✅ আগে সরাসরি Express কে browser থেকে কল করা হতো। এখন internal
+            // route ব্যবহার করছি, যেটা নিজে session থেকে donorName/donorEmail
+            // নিয়ে নেয় - তাই client থেকে কিছু পাঠানোর দরকার নেই।
+            const res = await fetch(
+                `/api/internal/donate/${request._id}`,
+                { method: "PATCH" }
+            );
+
+            const result = await res.json();
+
+            if (!res.ok) {
+                throw new Error(result.message || "Failed to confirm donation");
+            }
+
+            setRequest((prev) => ({
+                ...prev,
+                status: "In Progress",
+                donorName: session.user.name,
+                donorEmail: session.user.email,
+            }));
+
+            toast.success(
+                "Thank you for volunteering! The requester will contact you soon.",
+                { duration: 4000 }
+            );
+
+            close();
+            setIsModalOpen(false);
+        } catch (error) {
+            console.error("Error confirming donation:", error);
+            toast.error(error.message || "Something went wrong");
+        } finally {
+            setDonating(false);
+        }
+    };
+
+    // ✅ session চেক হওয়ার আগে বা redirect হওয়ার সময় কিছু render না করা
+    if (sessionPending || !session) {
         return (
             <div className="min-h-screen bg-[#FFF8F6] flex items-center justify-center">
                 <div className="text-[#800020] font-bold text-lg animate-pulse">
-                    Loading blood donation requests...
+                    Checking login status...
                 </div>
             </div>
         );
     }
 
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-[#FFF8F6] flex items-center justify-center">
+                <div className="text-[#800020] font-bold text-lg animate-pulse">
+                    Loading request details...
+                </div>
+            </div>
+        );
+    }
+
+    if (!request) {
+        return (
+            <div className="min-h-screen bg-[#FFF8F6] flex flex-col items-center justify-center">
+                <p className="text-xl text-gray-600 mb-4">Request not found</p>
+                <Link href="/blood-donation">
+                    <Button className="bg-[#800020] text-white">Back to Requests</Button>
+                </Link>
+            </div>
+        );
+    }
+
+    const status = request.status || "Pending";
+    const isInProgress = status === "In Progress";
+
+    const statusBadgeClass = isInProgress
+        ? "bg-blue-50 text-blue-700 border-blue-200"
+        : "bg-amber-50 text-amber-700 border-amber-200";
+
     return (
         <>
             <Toaster position="top-right" />
 
-            {/* মেইন কন্টেইনার */}
             <div className="min-h-screen bg-[#FFF8F6] py-8 px-4 sm:px-6 lg:px-8">
-                <div className="max-w-7xl mx-auto">
+                <div className="max-w-6xl mx-auto">
+                    <Link
+                        href="/blood-donation"
+                        className="inline-flex items-center gap-2 text-[#800020] hover:text-[#600018] font-semibold mb-8 transition-colors"
+                    >
+                        <FiArrowLeft className="w-5 h-5" />
+                        Back to Requests
+                    </Link>
 
-                    {/* হেডার সেকশন */}
-                    <div className="mb-10">
-                        <h1 className="text-4xl sm:text-5xl font-bold text-[#800020] mb-3">
-                            Blood Donation Requests
-                        </h1>
-                        <p className="text-gray-600 text-lg">
-                            Browse and respond to urgent blood donation requests in your area
-                        </p>
-                    </div>
-
-                    {/* কার্ড গ্রিড */}
-                    {requests && requests.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {requests.map((request) => (
-                                <Card
-                                    key={request._id}
-                                    className="overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-100 bg-white"
-                                >
-                                    {/* কার্ড হেডার */}
-                                    <div className="bg-gradient-to-r from-[#FDF0F0] to-[#FFE8E8] p-6 border-b border-red-100">
-                                        <div className="flex items-start justify-between mb-4">
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-[#800020]">
-                                                    {request.bloodGroup}
-                                                </h2>
-                                                <p className="text-xs text-gray-600 mt-1">Blood Group</p>
-                                            </div>
-                                            <div className="text-right">
-                                                <span className="inline-block px-3 py-1 bg-red-50 text-[#800020] text-xs font-bold rounded-full border border-red-200">
-                                                    Urgent
-                                                </span>
-                                            </div>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                        {/* বাম সাইড - ডিটেইলস (2/3) */}
+                        <div className="lg:col-span-2 space-y-6">
+                            <Card className="overflow-hidden border border-gray-100 bg-white">
+                                <div className="bg-gradient-to-r from-[#FDF0F0] to-[#FFE8E8] p-8 border-b border-red-100">
+                                    <div className="flex items-start justify-between mb-6">
+                                        <div>
+                                            <h1 className="text-4xl font-bold text-[#800020]">
+                                                {request.bloodGroup}
+                                            </h1>
+                                            <p className="text-gray-600 mt-2">Blood Group Required</p>
                                         </div>
-
-                                        {/* রিসিপিয়েন্ট নাম */}
-                                        <h3 className="text-lg font-bold text-gray-900">
-                                            {request.recipientName || "N/A"}
-                                        </h3>
-                                        <p className="text-sm text-gray-600 mt-1 line-clamp-2">
-                                            {request.requestMessage || "Blood donation needed"}
-                                        </p>
+                                        <span
+                                            className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}
+                                        >
+                                            {isInProgress ? "🔄 In Progress" : "⏳ Pending"}
+                                        </span>
                                     </div>
 
-                                    {/* কার্ড বডি */}
-                                    <div className="p-6 space-y-4">
+                                    <h2 className="text-3xl font-bold text-gray-900 mb-2">
+                                        {request.recipientName}
+                                    </h2>
+                                    <p className="text-gray-700">
+                                        Patient Record:{" "}
+                                        <span className="font-semibold">
+                                            {request._id?.slice(-6) || "N/A"}
+                                        </span>
+                                    </p>
+                                </div>
 
-                                        {/* লোকেশন */}
-                                        <div className="flex items-start gap-3">
-                                            <FiMapPin className="w-5 h-5 text-[#800020] mt-0.5 flex-shrink-0" />
-                                            <div>
-                                                <p className="text-xs text-gray-600 font-semibold">LOCATION</p>
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {request.hospitalName || "Hospital"}
-                                                </p>
-                                                <p className="text-xs text-gray-600">
-                                                    {request.upazila || "Area"}, {request.district || "District"}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* ডেট এবং টাইম */}
-                                        <div className="flex items-start gap-3">
-                                            <FiClock className="w-5 h-5 text-[#800020] mt-0.5 flex-shrink-0" />
-                                            <div>
-                                                <p className="text-xs text-gray-600 font-semibold">NEEDED</p>
-                                                <p className="text-sm font-medium text-gray-900">
-                                                    {request.donationDate}
-                                                </p>
-                                                <p className="text-xs text-gray-600">
-                                                    {request.donationTime}
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* অ্যাড্রেস */}
-                                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200">
-                                            <p className="text-xs text-gray-600 font-semibold mb-1">ADDRESS</p>
-                                            <p className="text-xs text-gray-700 line-clamp-2">
-                                                {request.fullAddress || "Address not provided"}
+                                <div className="p-8 space-y-8">
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">
+                                            Request Message
+                                        </h3>
+                                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                            <p className="text-gray-800 leading-relaxed">
+                                                {request.requestMessage ||
+                                                    "Blood donation needed for medical procedure"}
                                             </p>
                                         </div>
                                     </div>
 
-                                    {/* কার্ড ফুটার - বাটন */}
-                                    <div className="border-t border-gray-100 p-6 bg-gray-50">
-                                        <Link href={`/blood-donation/${request._id}`}>
-                                            <Button
-                                                className="w-full bg-[#800020] text-white font-semibold py-2.5 rounded-xl hover:bg-[#600018] transition-colors flex items-center justify-center gap-2"
-                                            >
-                                                View Details
-                                                <FiArrowRight className="w-4 h-4" />
-                                            </Button>
-                                        </Link>
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">
+                                            Hospital Information
+                                        </h3>
+                                        <div className="space-y-4">
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#800020] flex-shrink-0">
+                                                    <FiMapPin className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-600 font-semibold">
+                                                        HOSPITAL NAME
+                                                    </p>
+                                                    <p className="text-lg font-bold text-gray-900">
+                                                        {request.hospitalName || "N/A"}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex items-start gap-4">
+                                                <div className="w-10 h-10 bg-red-50 rounded-lg flex items-center justify-center text-[#800020] flex-shrink-0">
+                                                    <FiMapPin className="w-5 h-5" />
+                                                </div>
+                                                <div>
+                                                    <p className="text-xs text-gray-600 font-semibold">
+                                                        LOCATION
+                                                    </p>
+                                                    <p className="text-gray-900 font-medium">
+                                                        {request.upazila || "Area"}, {request.district || "District"}
+                                                    </p>
+                                                    <p className="text-sm text-gray-600 mt-1">
+                                                        {request.fullAddress || "Full address not provided"}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
-                                </Card>
-                            ))}
+
+                                    <div>
+                                        <h3 className="text-sm font-bold text-gray-700 uppercase mb-4">
+                                            Donation Timing
+                                        </h3>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                <p className="text-xs text-gray-600 font-semibold mb-1">
+                                                    DATE NEEDED
+                                                </p>
+                                                <p className="text-lg font-bold text-gray-900">
+                                                    {request.donationDate || "N/A"}
+                                                </p>
+                                            </div>
+                                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                                                <p className="text-xs text-gray-600 font-semibold mb-1">
+                                                    TIME NEEDED
+                                                </p>
+                                                <p className="text-lg font-bold text-gray-900">
+                                                    {request.donationTime || "N/A"}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {isInProgress && request.donorName && (
+                                        <div>
+                                            <h3 className="text-sm font-bold text-gray-700 uppercase mb-3">
+                                                Donor
+                                            </h3>
+                                            <div className="bg-blue-50 p-4 rounded-lg border border-blue-200">
+                                                <p className="text-gray-900 font-semibold">
+                                                    {request.donorName}
+                                                </p>
+                                                <p className="text-sm text-gray-600">{request.donorEmail}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </Card>
                         </div>
-                    ) : (
-                        <div className="text-center py-16">
-                            <p className="text-xl text-gray-600">No donation requests found</p>
-                            <p className="text-sm text-gray-500 mt-2">
-                                Check back later for urgent blood donation needs
-                            </p>
+
+                        {/* ডান সাইড - অ্যাকশন প্যানেল (1/3) */}
+                        <div className="lg:col-span-1">
+                            <Card className="overflow-hidden border border-gray-100 bg-white sticky top-8">
+                                <div className="bg-gradient-to-br from-[#800020] to-[#600018] p-8 text-white text-center">
+                                    <p className="text-xs font-bold uppercase tracking-widest mb-2">Need</p>
+                                    <h2 className="text-6xl font-black">{request.bloodGroup}</h2>
+                                </div>
+
+                                <div className="p-6 border-b border-gray-100">
+                                    <p className="text-xs font-bold text-gray-700 uppercase mb-4">
+                                        Requester
+                                    </p>
+                                    <div className="space-y-3">
+                                        <div>
+                                            <p className="text-xs text-gray-600">Name</p>
+                                            <p className="font-bold text-gray-900">
+                                                {request.requesterName || "N/A"}
+                                            </p>
+                                        </div>
+                                        <div>
+                                            <p className="text-xs text-gray-600">Email</p>
+                                            <a
+                                                href={`mailto:${request.requesterEmail}`}
+                                                className="text-[#800020] font-semibold hover:underline text-sm break-all"
+                                            >
+                                                {request.requesterEmail || "N/A"}
+                                            </a>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* ✅ Donate Now বাটন + Modal */}
+                                <div className="p-6">
+                                    <Modal>
+                                        <Button
+                                            onPress={() => setIsModalOpen(true)}
+                                            isDisabled={isInProgress}
+                                            className="w-full bg-[#800020] text-white font-bold py-3 rounded-xl hover:bg-[#600018] transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-base"
+                                        >
+                                            {isInProgress ? "Already In Progress" : "Donate Now"}
+                                        </Button>
+
+                                        <Modal.Backdrop isOpen={isModalOpen} onOpenChange={setIsModalOpen}>
+                                            <Modal.Container>
+                                                <Modal.Dialog>
+                                                    {({ close }) => (
+                                                        <>
+                                                            <Modal.Header>
+                                                                <Modal.Heading>Confirm Blood Donation</Modal.Heading>
+                                                            </Modal.Header>
+
+                                                            <Modal.Body className="space-y-4">
+                                                                <p className="text-sm text-gray-600">
+                                                                    নিচের তথ্য দিয়ে তুমি এই request এর জন্য
+                                                                    donate করতে চাচ্ছো বলে confirm করছো।
+                                                                </p>
+
+                                                                {/* ✅ Read-only — logged-in user এর session থেকে */}
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                                                                        Donor Name
+                                                                    </p>
+                                                                    <p className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                                                                        {session.user.name}
+                                                                    </p>
+                                                                </div>
+
+                                                                <div>
+                                                                    <p className="text-xs font-semibold text-gray-500 uppercase mb-1">
+                                                                        Donor Email
+                                                                    </p>
+                                                                    <p className="px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 font-medium">
+                                                                        {session.user.email}
+                                                                    </p>
+                                                                </div>
+                                                            </Modal.Body>
+
+                                                            <Modal.Footer>
+                                                                <Button slot="close" isDisabled={donating}>
+                                                                    Cancel
+                                                                </Button>
+                                                                <Button
+                                                                    className="bg-[#800020] text-white"
+                                                                    onPress={() => handleConfirmDonation(close)}
+                                                                    isDisabled={donating}
+                                                                >
+                                                                    {donating ? "Confirming..." : "Confirm"}
+                                                                </Button>
+                                                            </Modal.Footer>
+                                                        </>
+                                                    )}
+                                                </Modal.Dialog>
+                                            </Modal.Container>
+                                        </Modal.Backdrop>
+                                    </Modal>
+
+                                    <p className="text-xs text-gray-500 text-center mt-3">
+                                        {isInProgress
+                                            ? "A donor has already confirmed this request"
+                                            : "The requester will contact you with further details"}
+                                    </p>
+                                </div>
+                            </Card>
                         </div>
-                    )}
+                    </div>
                 </div>
             </div>
         </>
