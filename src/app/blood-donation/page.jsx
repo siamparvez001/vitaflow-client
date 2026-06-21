@@ -1,5 +1,5 @@
 // app/blood-donation/page.js
-import DonationRequestClient from "@/components/DonationRequestClient";
+import DonationRequest from "@/components/DonationRequest";
 
 export const metadata = {
   title: "Blood Donation Requests | VitaFlow",
@@ -7,5 +7,5 @@ export const metadata = {
 };
 
 export default function BloodDonationPage() {
-  return <DonationRequestClient />;
+  return <DonationRequest />;
 }

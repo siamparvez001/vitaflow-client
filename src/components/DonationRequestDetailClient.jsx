@@ -1,22 +1,20 @@
 "use client";
 import React, { useState, useEffect } from "react";
-// import { use } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Card, Button, Modal } from "@heroui/react";
 import { FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
 import { useSession } from "@/lib/auth-client";
 
-export default function DonationRequestDetailClient({ id }) {
-    // ✅ params থাকলে এবং সেটা Promise হলে use() দিয়ে resolve করো,
-    // params undefined/null হলে use() কল করার দরকার নেই — সরাসরি id তে fallback করবে
-    // const resolvedId = id;
-
-    const resolvedId = id ;
+export default function DonationRequestDetailClient() {
+    // ✅ useParams() client component এ সবসময় synchronously plain object
+    // রিটার্ন করে — params আর Promise হিসেবে আসে না, তাই use() লাগে না।
+    // এটাই canonical version - আগের তিনটা variation এর বদলে এটাই রাখা হলো।
+    const params = useParams();
+    const resolvedId = params?.id;
 
     const router = useRouter();
-
     const { data: session, isPending: sessionPending } = useSession();
 
     const [request, setRequest] = useState(null);
@@ -24,6 +22,7 @@ export default function DonationRequestDetailClient({ id }) {
     const [donating, setDonating] = useState(false);
     const [isModalOpen, setIsModalOpen] = useState(false);
 
+    // ✅ Private route guard — login session না থাকলে login page এ পাঠানো হবে।
     useEffect(() => {
         if (!sessionPending && !session) {
             router.push("/auth/signin");
@@ -31,7 +30,6 @@ export default function DonationRequestDetailClient({ id }) {
     }, [sessionPending, session, router]);
 
     const fetchRequest = async () => {
-        // ✅ resolvedId না থাকলে fetch ই করবো না, নাহলে /api/.../undefined hit হবে
         if (!resolvedId) {
             setLoading(false);
             toast.error("Invalid request ID");
@@ -40,6 +38,7 @@ export default function DonationRequestDetailClient({ id }) {
 
         try {
             setLoading(true);
+
             const res = await fetch(`/api/internal/donation-request-detail/${resolvedId}`);
 
             if (!res.ok) {
@@ -126,7 +125,7 @@ export default function DonationRequestDetailClient({ id }) {
         return (
             <div className="min-h-screen bg-[#FFF8F6] flex flex-col items-center justify-center">
                 <p className="text-xl text-gray-600 mb-4">Request not found</p>
-                <Link href="/blood-donation">
+                <Link href="/donation-request">
                     <Button className="bg-[#800020] text-white">Back to Requests</Button>
                 </Link>
             </div>
@@ -147,7 +146,7 @@ export default function DonationRequestDetailClient({ id }) {
             <div className="min-h-screen bg-[#FFF8F6] py-8 px-4 sm:px-6 lg:px-8">
                 <div className="max-w-6xl mx-auto">
                     <Link
-                        href="/blood-donation"
+                        href="/donation-request"
                         className="inline-flex items-center gap-2 text-[#800020] hover:text-[#600018] font-semibold mb-8 transition-colors"
                     >
                         <FiArrowLeft className="w-5 h-5" />
@@ -165,9 +164,7 @@ export default function DonationRequestDetailClient({ id }) {
                                             </h1>
                                             <p className="text-gray-600 mt-2">Blood Group Required</p>
                                         </div>
-                                        <span
-                                            className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}
-                                        >
+                                        <span className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}>
                                             {isInProgress ? "🔄 In Progress" : "⏳ Pending"}
                                         </span>
                                     </div>
@@ -190,8 +187,7 @@ export default function DonationRequestDetailClient({ id }) {
                                         </h3>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-gray-800 leading-relaxed">
-                                                {request.requestMessage ||
-                                                    "Blood donation needed for medical procedure"}
+                                                {request.requestMessage || "Blood donation needed for medical procedure"}
                                             </p>
                                         </div>
                                     </div>

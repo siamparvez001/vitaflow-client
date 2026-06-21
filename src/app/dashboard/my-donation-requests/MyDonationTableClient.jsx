@@ -1,9 +1,11 @@
 "use client";
 import React, { useState } from 'react';
 import { FiEye, FiEdit2, FiTrash2, FiSliders } from "react-icons/fi";
+import { toast, Toaster } from "react-hot-toast";
 
 export default function MyDonationTableClient({ initialRequests }) {
     const [allRequest, setAllRequest] = useState(initialRequests);
+    const [statusFilter, setStatusFilter] = useState("all");
 
     const getStatusColor = (status) => {
         switch (status?.toLowerCase()) {
@@ -14,8 +16,34 @@ export default function MyDonationTableClient({ initialRequests }) {
         }
     };
 
+    // ✅ আগে এই বাটনে কোনো onClick handler ছিল না - শুধু আইকন বসানো ছিল।
+    // এখন internal proxy route দিয়ে ডিলিট কাজ করছে।
+    const handleDelete = async (requestId) => {
+        if (!confirm("Are you sure you want to delete this donation request?")) return;
 
+        try {
+            const res = await fetch(`/api/internal/donation-delete/${requestId}`, {
+                method: "DELETE",
+            });
 
+            if (!res.ok) {
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to delete request");
+            }
+
+            toast.success("Request deleted successfully");
+            setAllRequest((prev) => prev.filter((r) => r._id !== requestId));
+        } catch (error) {
+            toast.error(error.message);
+        }
+    };
+
+    const filteredRequests =
+        statusFilter === "all"
+            ? allRequest
+            : allRequest.filter(
+                  (r) => r.status?.toLowerCase() === statusFilter.toLowerCase()
+              );
 
     return (
 
@@ -25,13 +53,24 @@ export default function MyDonationTableClient({ initialRequests }) {
                 {/* 🏷️ হেডার এবং ফিল্টার বাটন */}
                 <div className="flex justify-between items-center mb-6">
                     <h2 className="text-xl font-bold text-gray-900 tracking-tight">My Donation Requests</h2>
-                    <button className="flex items-center gap-2 px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors">
-                        <FiSliders className="size-4" /> Filter
-                    </button>
+
+                    {/* ✅ আগে শুধু একটা স্ট্যাটিক "Filter" বাটন ছিল, কোনো dropdown
+                        ছিল না - এখন actual status filter কাজ করছে */}
+                    <select
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-4 py-1.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 bg-white cursor-pointer focus:outline-none focus:border-[#800020]"
+                    >
+                        <option value="all">All Status</option>
+                        <option value="pending">Pending</option>
+                        <option value="inprogress">In Progress</option>
+                        <option value="done">Done</option>
+                        <option value="canceled">Canceled</option>
+                    </select>
                 </div>
 
                 {/* 📊 টেবিল */}
-                {allRequest.length === 0 ? (
+                {filteredRequests.length === 0 ? (
                     <div className="text-center py-12 text-gray-500 font-medium">
                         No donation requests found.
                     </div>
@@ -49,7 +88,7 @@ export default function MyDonationTableClient({ initialRequests }) {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-50">
-                                {allRequest.map((request) => {
+                                {filteredRequests.map((request) => {
                                     const nameInitials = request.recipientName
                                         ? request.recipientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                                         : 'RE';
@@ -88,9 +127,18 @@ export default function MyDonationTableClient({ initialRequests }) {
                                             </td>
                                             <td className="py-4 px-6">
                                                 <div className="flex items-center justify-center gap-4 text-gray-500">
-                                                    <button className="hover:text-blue-600 p-1 rounded transition-colors"><FiEye className="size-4.5" /></button>
-                                                    <button className="hover:text-amber-600 p-1 rounded transition-colors"><FiEdit2 className="size-4.5" /></button>
-                                                    <button className="hover:text-red-600 p-1 rounded transition-colors"><FiTrash2 className="size-4.5" /></button>
+                                                    <a
+                                                        href={`/blood-donation/${request._id}`}
+                                                        className="hover:text-blue-600 p-1 rounded transition-colors"
+                                                    >
+                                                        <FiEye className="size-4.5" />
+                                                    </a>
+                                                    <button
+                                                        onClick={() => handleDelete(request._id)}
+                                                        className="hover:text-red-600 p-1 rounded transition-colors"
+                                                    >
+                                                        <FiTrash2 className="size-4.5" />
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>

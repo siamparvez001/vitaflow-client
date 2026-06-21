@@ -1,8 +1,8 @@
 // app/blood-donation/[id]/page.jsx
 "use client";
-import DonationRequestDetailClient from "@/components/DonationRequestClient";
+import DonationRequestDetailClient from "@/components/DonationRequestDetailClient";
 
 export default function DetailPage() {
-    // ✅ params prop ব্যবহারই করছি না — component নিজেই useParams() দিয়ে id বের করবে
+    // ✅ params prop ব্যবহার করছি না — component নিজেই useParams() দিয়ে id বের করে নেয়
     return <DonationRequestDetailClient />;
 }

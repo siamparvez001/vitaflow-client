@@ -5,10 +5,9 @@ import { toast, Toaster } from "react-hot-toast";
 
 export default function DonationRequestTableClient({ initialRequests, currentUserRole }) {
     const [requests, setRequests] = useState(initialRequests || []);
-    const [filterStatus, setFilterStatus] = useState("all");  
+    const [filterStatus, setFilterStatus] = useState("all");
     const [activeDropdown, setActiveDropdown] = useState(null);
 
-    const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
     const dropdownRef = useRef(null);
 
     useEffect(() => {
@@ -26,10 +25,13 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
         setActiveDropdown(activeDropdown === id ? null : id);
     };
 
+    // ✅ আগে ভুল endpoint (`/api/donation-request/status/:id`) ছিল যেটা
+    // Express এ আদৌ exist করে না, আর সরাসরি browser থেকে Express কে কল
+    // করার চেষ্টা করছিল secret ছাড়া। এখন internal route ব্যবহার করছি।
     const handleStatusUpdate = async (requestId, newStatus) => {
         setActiveDropdown(null);
         try {
-            const res = await fetch(`${baseUrl}/api/donation-request/status/${requestId}`, {
+            const res = await fetch(`/api/internal/donation-status/${requestId}`, {
                 method: "PATCH",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ status: newStatus })
@@ -39,19 +41,21 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                 toast.success(`Status updated to ${newStatus}`);
                 setRequests(prev => prev.map(req => req._id === requestId ? { ...req, status: newStatus } : req));
             } else {
-                throw new Error("Failed to update status");
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to update status");
             }
         } catch (error) {
             toast.error(error.message);
         }
     };
 
+    // ✅ আগে ভুল endpoint (`/api/donation-request/:id`) ছিল - এখন internal route
     const handleDeleteRequest = async (requestId) => {
         setActiveDropdown(null);
         if (!confirm("Are you sure you want to delete this donation request?")) return;
 
         try {
-            const res = await fetch(`${baseUrl}/api/donation-request/${requestId}`, {
+            const res = await fetch(`/api/internal/donation-delete/${requestId}`, {
                 method: "DELETE"
             });
 
@@ -59,14 +63,14 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                 toast.success("Request deleted successfully");
                 setRequests(prev => prev.filter(req => req._id !== requestId));
             } else {
-                throw new Error("Failed to delete request");
+                const err = await res.json().catch(() => ({}));
+                throw new Error(err.message || "Failed to delete request");
             }
         } catch (error) {
             toast.error(error.message);
         }
     };
 
-    // ✅ ঠিক করা ফিল্টারিং লজিক
     const filteredRequests = filterStatus === "all"
         ? requests
         : requests.filter(req => req.status?.toLowerCase() === filterStatus.toLowerCase());
@@ -86,14 +90,12 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
             <Toaster position="top-right" toastOptions={{ style: { background: '#12131A', color: '#FFF' } }} />
             <div className="max-w-7xl mx-auto flex flex-col gap-6">
 
-                {/* 🏷️ প্রিমিয়াম হেডার এবং ফিল্টার ট্যাব */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#11121A] p-6 rounded-2xl border border-gray-800/60">
                     <div>
                         <h2 className="text-xl font-black tracking-wide text-gray-100">All Blood Donation Requests</h2>
                         <p className="text-xs text-gray-500 mt-1">Role-based Access Control Dashboard ({currentUserRole})</p>
                     </div>
 
-                    {/* কাস্টম ফিল্টার ট্যাব */}
                     <div className="flex flex-wrap gap-2 bg-[#171822] p-1.5 rounded-xl border border-gray-800">
                         {["all", "pending", "inprogress", "done", "canceled"].map((status) => (
                             <button
@@ -110,10 +112,8 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                     </div>
                 </div>
 
-                {/* 📊 কাস্টম ডার্ক মেটেরিয়াল টেবিল */}
                 <div className="bg-[#11121A] rounded-2xl border border-gray-800/60 overflow-visible shadow-2xl">
 
-                    {/* টেবিল হেডার */}
                     <div className="grid grid-cols-12 bg-[#151622] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-800/80">
                         <div className="col-span-3">Recipient</div>
                         <div className="col-span-3">Location & Hospital</div>
@@ -123,7 +123,6 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                         <div className="col-span-1 text-right">Actions</div>
                     </div>
 
-                    {/* টেবিল বডি */}
                     <div className="flex flex-col divide-y divide-gray-800/40 overflow-visible">
                         {filteredRequests && filteredRequests.length > 0 ? (
                             filteredRequests.map((request) => {
@@ -131,10 +130,12 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                     ? request.recipientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                                     : 'RE';
 
+                                // ✅ Volunteer শুধু status আপডেট করতে পারবে - requirement অনুযায়ী
+                                const canEditDelete = currentUserRole === "Admin";
+
                                 return (
                                     <div key={request._id} className="grid grid-cols-12 items-center py-5 px-6 hover:bg-[#151722]/40 transition-colors overflow-visible">
 
-                                        {/* ১. রিকিপিয়েন্ট অ্যাভাটার ও নাম */}
                                         <div className="col-span-3 flex items-center gap-3 pr-2">
                                             <div className="w-9 h-9 bg-gray-800 text-gray-400 border border-gray-700 font-bold rounded-full flex items-center justify-center text-xs shrink-0">
                                                 {nameInitials}
@@ -145,33 +146,28 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                             </div>
                                         </div>
 
-                                        {/* ২. লোকেশন ও হাসপাতাল */}
                                         <div className="col-span-3 pr-2">
                                             <h4 className="text-xs font-bold text-gray-300 truncate">{request.hospitalName || "N/A"}</h4>
-                                            <p className="text-[11px] text-gray-500 mt-0.5 capitalize">{request.upazila || request.recipientUpazila}, {request.district || request.recipientDistrict}</p>
+                                            <p className="text-[11px] text-gray-500 mt-0.5 capitalize">{request.upazila}, {request.district}</p>
                                         </div>
 
-                                        {/* ৩. ডেট ও টাইম */}
                                         <div className="col-span-2 text-center">
                                             <span className="text-xs font-medium text-gray-300 block">{request.donationDate}</span>
                                             <span className="text-[10px] text-gray-500 block mt-0.5">{request.donationTime}</span>
                                         </div>
 
-                                        {/* ৪. ব্লাড গ্রুপ */}
                                         <div className="col-span-1 text-center">
                                             <span className="inline-block px-2.5 py-0.5 rounded bg-red-950/20 text-red-500 border border-red-900/30 text-xs font-black">
                                                 {request.bloodGroup}
                                             </span>
                                         </div>
 
-                                        {/* ৫. ডোনেশন স্ট্যাটাস */}
                                         <div className="col-span-2 text-center">
                                             <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${getStatusStyle(request.status || "pending")}`}>
                                                 {request.status || "pending"}
                                             </span>
                                         </div>
 
-                                        {/* ৬. ৩-ডট পপআপ মেনু */}
                                         <div className="col-span-1 text-right relative overflow-visible" ref={activeDropdown === request._id ? dropdownRef : null}>
                                             <button
                                                 onClick={(e) => toggleDropdown(request._id, e)}
@@ -181,7 +177,7 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                             </button>
 
                                             {activeDropdown === request._id && (
-                                                <div className="absolute right-0 mt-2 w-48 bg-[#171822] border border-gray-800/80 rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden animate-in fade-in slide-in-from-top-1 duration-100">
+                                                <div className="absolute right-0 mt-2 w-48 bg-[#171822] border border-gray-800/80 rounded-xl shadow-2xl z-50 py-1.5 overflow-hidden">
 
                                                     <a href={`/dashboard/donation-request/${request._id}`} className="w-full text-left px-4 py-2 text-xs text-gray-300 hover:bg-gray-800 flex items-center gap-2 transition-colors">
                                                         <FiEye className="size-3.5" /> View Details
@@ -204,7 +200,8 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                                         </button>
                                                     )}
 
-                                                    {currentUserRole === "Admin" && (
+                                                    {/* ✅ শুধু Admin - Volunteer এই অপশন দেখবে না */}
+                                                    {canEditDelete && (
                                                         <div className="border-t border-gray-800/60 mt-1 pt-1">
                                                             <a href={`/dashboard/edit-donation-request/${request._id}`} className="w-full text-left px-4 py-2 text-xs text-amber-400 hover:bg-amber-950/10 flex items-center gap-2 transition-colors">
                                                                 <FiEdit2 className="size-3.5" /> Edit Request

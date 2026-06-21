@@ -1,7 +1,7 @@
 // src/components/dashboard/DashboardSidebar.jsx
 "use client"
-import { useSession } from "@/lib/auth-client";
-import { usePathname } from "next/navigation";
+import { useSession, signOut } from "@/lib/auth-client";
+import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
     FiHome,
@@ -20,14 +20,29 @@ import React, { useState } from "react";
 export function DashboardSidebar() {
     const { data: session, isPending } = useSession();
     const pathname = usePathname();
+    const router = useRouter();
     const [isOpen, setIsOpen] = useState(false);
+
+    // ✅ আগে শুধু href="/auth/signin" দিয়ে navigate হতো - signOut() কখনো
+    // call হতো না, তাই session আসলে শেষ হতো না ব্যাকগ্রাউন্ডে। এখন আগে
+    // signOut() কল হবে, তারপর redirect।
+    const handleSignOut = async () => {
+        setIsOpen(false);
+        await signOut({
+            fetchOptions: {
+                onSuccess: () => {
+                    router.push("/auth/signin");
+                    router.refresh();
+                },
+            },
+        });
+    };
 
     if (isPending) {
         return <div className="p-4 text-sm text-gray-500">Loading sidebar...</div>
     }
 
     const user = session?.user;
-    console.log(user?.role)
 
     const navItems = [
         { icon: FiHome, href: "/dashboard", label: "Dashboard Home" },
@@ -85,11 +100,9 @@ export function DashboardSidebar() {
                     {renderNavLinks(navItems)}
                 </div>
 
-                {/* ⚙️ bottom section */}
                 <div className="flex flex-col gap-1 border-t border-gray-200/60 pt-4 mt-auto">
                     {renderNavLinks(bottomItems)}
 
-                    {/* 👤 user profile details */}
                     {user && (
                         <div className="flex items-center gap-3 px-4 py-3 my-2 bg-gray-50/80 rounded-xl border border-gray-100">
                             <div className="w-9 h-9 rounded-full bg-[#B32D44]/10 text-[#B32D44] flex items-center justify-center font-bold text-sm shrink-0">
@@ -102,16 +115,15 @@ export function DashboardSidebar() {
                         </div>
                     )}
 
-                    {/* 🚪 sign Out link */}
+                    {/* ✅ Sign Out - এখন signOut() কল করে, শুধু navigate করে না */}
                     {user && (
-                        <Link
-                            href="/auth/signin"
-                            onClick={() => setIsOpen(false)}
+                        <button
+                            onClick={handleSignOut}
                             className="flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all w-full text-left"
                         >
                             <FiLogOut className="size-5 text-gray-500" />
                             Sign Out
-                        </Link>
+                        </button>
                     )}
                 </div>
             </aside>
@@ -151,14 +163,13 @@ export function DashboardSidebar() {
                             )}
 
                             {user && (
-                                <Link
-                                    href="/auth/signin"
-                                    onClick={() => setIsOpen(false)}
+                                <button
+                                    onClick={handleSignOut}
                                     className="flex items-center gap-4 rounded-xl px-4 py-3 text-sm font-medium text-gray-700 hover:bg-red-50 hover:text-red-600 transition-all w-full text-left"
                                 >
                                     <FiLogOut className="size-5 text-gray-500" />
                                     Sign Out
-                                </Link>
+                                </button>
                             )}
                         </div>
                     </Drawer.Body>

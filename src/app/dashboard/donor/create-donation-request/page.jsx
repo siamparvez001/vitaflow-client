@@ -61,8 +61,6 @@ export default function CreateDonationRequest() {
 
     const upazilaOptions = selectedDistrict ? upazilas[selectedDistrict] : [];
 
-
-    // সাবমিশনের সময় লোডিং ট্র্যাকিং করার জন্য একটি স্টেট
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const handleSubmit = async (e) => {
@@ -72,16 +70,13 @@ export default function CreateDonationRequest() {
         const data = Object.fromEntries(formData.entries());
         const newErrors = {};
 
-        // ১. ব্লাড গ্রুপ ভ্যালিডেশন ও স্পেসিফিক টোস্ট
         if (!selectedBloodGroup) {
             newErrors.bloodGroup = "Blood group is required";
             setBloodGroupError("Please select a blood group");
-            toast.error("Something went wrong");
         } else {
             setBloodGroupError("");
         }
 
-        // ২. বাকি সব ফিল্ডের কাস্টম এরর চেকিং
         if (!data.recipientName) newErrors.recipientName = "Recipient name is required";
         if (!selectedDistrict) newErrors.recipientDistrict = "District is required";
         if (!selectedUpazila) newErrors.recipientUpazila = "Upazila is required";
@@ -101,8 +96,12 @@ export default function CreateDonationRequest() {
         }
 
         setErrors({});
-        setIsSubmitting(true); // লোডিং শুরু
+        setIsSubmitting(true);
 
+        // ✅ userId এবং status এখানে পাঠানোর দরকার নেই — Express সার্ভার
+        // নিজেই logged-in session থেকে userId/requesterEmail বসায়, এবং
+        // status সবসময় "Pending" দিয়ে শুরু করে। client থেকে পাঠানো এই
+        // ফিল্ডগুলো এখন সার্ভারে ignore হয় (নিরাপত্তার জন্য)।
         const finalRequestData = {
             recipientName: data.recipientName,
             hospitalName: data.hospitalName,
@@ -114,69 +113,29 @@ export default function CreateDonationRequest() {
             district: selectedDistrict,
             upazila: selectedUpazila,
             requesterName: user?.name || "Anonymous User",
-            requesterEmail: user?.email || "user@example.com",
-            status: "Active",
-            userId: user?.id,
         };
 
-       
-
         try {
-            
-            const res = await bloodRequest(finalRequestData)
-            
+            const res = await bloodRequest(finalRequestData);
 
             if (res.insertedId) {
-                
-                toast.success(
-                    "Donation request posted and saved successfully."
-                );
-                
-                
+                toast.success("Donation request posted and saved successfully.");
+
                 e.target.reset();
                 setSelectedBloodGroup("");
                 setSelectedDistrict("");
                 setSelectedUpazila("");
-               
-             
             } else {
                 throw new Error("Failed to insert data");
             }
-
         } catch (error) {
             console.error("Submission error:", error);
-            toast.error(
-                "Something went wrong while connecting to the server."
-            );
+            toast.error(error.message || "Something went wrong while connecting to the server.");
         } finally {
-            setIsSubmitting(false); // লোডিং শেষ
+            setIsSubmitting(false);
         }
     };
 
-    // const handleSubmit = (e) => {
-    //     e.preventDefault();
-
-    //     if (!selectedBloodGroup) {
-    //         setBloodGroupError("Please select a blood group");
-    //         return;
-    //     }
-    //     setBloodGroupError("");
-
-    //     const formData = new FormData(e.currentTarget);
-    //     const data = Object.fromEntries(formData.entries());
-
-    //     const finalRequestData = {
-    //         ...data,
-    //         bloodGroup: selectedBloodGroup,
-    //         district: selectedDistrict,
-    //         upazila: selectedUpazila,
-    //         requesterName: user?.name || "Anonymous User",
-    //         requesterEmail: user?.email || "user@example.com",
-    //         status: "pending",
-    //     };
-
-    //     console.log("Submitted Donation Request:", finalRequestData);
-    // };
     if (isPending) {
         return <div>Loading...</div>
     }
@@ -217,7 +176,6 @@ export default function CreateDonationRequest() {
                 <div className="lg:col-span-2 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-gray-100">
                     <Form onSubmit={handleSubmit} validationBehavior="native" className="flex flex-col gap-6">
 
-                        {/* ১. রিকোয়েস্টার সেকশন (Read Only) */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                             <Input
                                 label="Requester Name"
@@ -237,7 +195,6 @@ export default function CreateDonationRequest() {
 
                         <hr className="border-gray-100 my-2" />
 
-                        {/* ২. পেশেন্ট ইনফরমেশন সেকশন */}
                         <h3 className="text-lg font-bold text-gray-800 -mb-2">Patient Information</h3>
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full items-start">
@@ -249,7 +206,6 @@ export default function CreateDonationRequest() {
                                 variant="bordered"
                             />
 
-                            {/* কাস্টম ব্লাড গ্রুপ বাটন গ্রিড */}
                             <div className="flex flex-col gap-2">
                                 <span className="text-sm font-medium text-black">Blood Group <span className="text-danger">*</span></span>
                                 <div className="grid grid-cols-4 gap-2">
@@ -276,26 +232,23 @@ export default function CreateDonationRequest() {
                             </div>
                         </div>
 
-                        {/* ড্রপডাউন সেকশন */}
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-                            {/* ডিস্ট্রিক্ট সিলেক্ট */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-black">
                                     Recipient District <span className="text-danger">*</span>
                                 </label>
                                 <select
                                     required
-                                    name="recipientDistrict" // ফর্ম ডাটা সহজে হ্যান্ডেল করার জন্য নেম ট্যাগ
-                                    value={selectedDistrict || ""} // যদি ভ্যালু আনডিফাইন্ড বা খালি থাকে তবে ফলব্যাক স্ট্রিন ""
+                                    name="recipientDistrict"
+                                    value={selectedDistrict || ""}
                                     onChange={(e) => {
                                         setSelectedDistrict(e.target.value);
-                                        setSelectedUpazila(''); // জেলা পরিবর্তন করলে উপজেলা রিসেট
+                                        setSelectedUpazila('');
                                     }}
                                     className="w-full px-3 py-2 bg-white text-black rounded-xl border-2 border-default-200 hover:border-default-400 focus:border-[#800020] outline-none text-sm h-10 transition-colors cursor-pointer"
                                 >
                                     <option value="">Select District</option>
-                                    {districts && districts.map((district) => (
-                                        // নিশ্চিত হয়ে নিন district.value এবং district.label আপনার ডাটা স্ট্রাকচারে আছে
+                                    {districts.map((district) => (
                                         <option key={district.value} value={district.value}>
                                             {district.label}
                                         </option>
@@ -303,7 +256,6 @@ export default function CreateDonationRequest() {
                                 </select>
                             </div>
 
-                            {/* উপজেলা সিলেক্ট */}
                             <div className="flex flex-col gap-1.5">
                                 <label className="text-sm font-medium text-black">
                                     Recipient Upazila <span className="text-danger">*</span>
@@ -311,22 +263,21 @@ export default function CreateDonationRequest() {
                                 <select
                                     required
                                     name="recipientUpazila"
-                                    value={selectedUpazila || ""} // ভ্যালু ট্র্যাকিং ফিক্স
+                                    value={selectedUpazila || ""}
                                     onChange={(e) => setSelectedUpazila(e.target.value)}
                                     disabled={!selectedDistrict}
                                     className="w-full px-3 py-2 bg-white text-black rounded-xl border-2 border-default-200 hover:border-default-400 focus:border-[#800020] outline-none text-sm h-10 transition-colors cursor-pointer disabled:opacity-50 disabled:bg-gray-50"
                                 >
                                     <option value="">Select Upazila</option>
-                                    {upazilaOptions && upazilaOptions.map((upazila) => (
+                                    {upazilaOptions.map((upazila) => (
                                         <option key={upazila.value} value={upazila.value}>
                                             {upazila.label}
                                         </option>
                                     ))}
                                 </select>
                             </div>
-                        </div>ƒ
+                        </div>
 
-                        {/* হাসপাতাল ও ফুল এড্রেস */}
                         <h3 className="text-lg font-bold text-gray-800 -mb-2">Medical & Location Details</h3>
                         <Input
                             required
@@ -346,7 +297,6 @@ export default function CreateDonationRequest() {
 
                         <hr className="border-gray-100 my-2" />
 
-                        {/* ৩. টাইমিং এবং মেসেজ সেকশন */}
                         <h3 className="text-lg font-bold text-gray-800 -mb-2">Timing & Message</h3>
 
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
@@ -375,22 +325,14 @@ export default function CreateDonationRequest() {
                             className="min-h-[100px]"
                         />
 
-                        {/* ৪. অ্যাকশন বাটন সেকশন */}
                         <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-4 w-full">
                             <div className="flex gap-3 w-full sm:w-auto">
                                 <Button
                                     type="submit"
-                                    className="bg-[#800020] text-white font-semibold px-6 py-2.5 rounded-xl shadow-md hover:bg-[#600018] flex items-center gap-2 w-full sm:w-auto"
+                                    isDisabled={isSubmitting}
+                                    className="bg-[#800020] text-white font-semibold px-6 py-2.5 rounded-xl shadow-md hover:bg-[#600018] flex items-center gap-2 w-full sm:w-auto disabled:opacity-50"
                                 >
-                                    <FiSend className="size-4" /> Submit Request
-                                </Button>
-
-                                <Button
-                                    type="button"
-                                    variant="bordered"
-                                    className="border-gray-200 text-gray-700 font-medium px-6 py-2.5 rounded-xl hover:bg-gray-50 w-full sm:w-auto"
-                                >
-                                    Save Draft
+                                    <FiSend className="size-4" /> {isSubmitting ? "Submitting..." : "Submit Request"}
                                 </Button>
                             </div>
 
