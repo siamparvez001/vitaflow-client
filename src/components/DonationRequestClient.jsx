@@ -1,18 +1,19 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { use } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Card, Button, Modal } from "@heroui/react";
 import { FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
 import { useSession } from "@/lib/auth-client";
 
-export default function DonationRequestDetailClient({ params, id }) {
-    const resolvedId = id || use(params).id;
-    const router = useRouter();
+export default function DonationRequestDetailClient() {
+    // ✅ useParams() client component এ সবসময় synchronously plain object
+    // রিটার্ন করে — params আর Promise হিসেবে আসে না, তাই use() লাগে না
+    const params = useParams();
+    const resolvedId = params?.id;
 
-    // ✅ session লোড হওয়ার আগ পর্যন্ত isPending true থাকে
+    const router = useRouter();
     const { data: session, isPending: sessionPending } = useSession();
 
     const [request, setRequest] = useState(null);
@@ -29,14 +30,18 @@ export default function DonationRequestDetailClient({ params, id }) {
     }, [sessionPending, session, router]);
 
     const fetchRequest = async () => {
+        if (!resolvedId) {
+            setLoading(false);
+            toast.error("Invalid request ID");
+            return;
+        }
+
         try {
             setLoading(true);
 
-            // ✅ আগে পুরো লিস্ট (/api/create-donation-request) আনা হতো এবং
-            // ফ্রন্টএন্ডে খুঁজে বের করা হতো - কিন্তু ওই endpoint এখন
-            // Admin/Volunteer-only, তাই Donor হলে 403 পেতে। এখন single-item
-            // internal route ব্যবহার করছি যেটা যেকোনো logged-in user
-            // অ্যাক্সেস করতে পারে।
+            // ✅ internal route ব্যবহার করছি যেটা যেকোনো logged-in user
+            // (Admin/Volunteer/Donor) অ্যাক্সেস করতে পারে এবং
+            // Express সার্ভারে internal secret + user header নিজে যোগ করে দেয়
             const res = await fetch(`/api/internal/donation-request-detail/${resolvedId}`);
 
             if (!res.ok) {
@@ -59,7 +64,7 @@ export default function DonationRequestDetailClient({ params, id }) {
         fetchRequest();
     }, [resolvedId, sessionPending, session]);
 
-    // ✅ Confirm বাটনে click করলে — name/email এখন session থেকে আসছে, ইনপুট থেকে না
+    // ✅ Confirm বাটনে click করলে — name/email session থেকে আসছে, ইনপুট থেকে না
     const handleConfirmDonation = async (close) => {
         if (!session?.user?.name || !session?.user?.email) {
             toast.error("তোমার account এর তথ্য পাওয়া যায়নি, আবার login করো");
@@ -69,13 +74,11 @@ export default function DonationRequestDetailClient({ params, id }) {
         try {
             setDonating(true);
 
-            // ✅ আগে সরাসরি Express কে browser থেকে কল করা হতো। এখন internal
-            // route ব্যবহার করছি, যেটা নিজে session থেকে donorName/donorEmail
-            // নিয়ে নেয় - তাই client থেকে কিছু পাঠানোর দরকার নেই।
-            const res = await fetch(
-                `/api/internal/donate/${request._id}`,
-                { method: "PATCH" }
-            );
+            // ✅ internal route নিজেই session থেকে name/email নিচ্ছে,
+            // তাই body তে আলাদা করে পাঠানোর দরকার নেই
+            const res = await fetch(`/api/internal/donate/${request._id}`, {
+                method: "PATCH",
+            });
 
             const result = await res.json();
 
@@ -170,9 +173,7 @@ export default function DonationRequestDetailClient({ params, id }) {
                                             </h1>
                                             <p className="text-gray-600 mt-2">Blood Group Required</p>
                                         </div>
-                                        <span
-                                            className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}
-                                        >
+                                        <span className={`px-4 py-2 font-bold rounded-full border ${statusBadgeClass}`}>
                                             {isInProgress ? "🔄 In Progress" : "⏳ Pending"}
                                         </span>
                                     </div>
@@ -195,8 +196,7 @@ export default function DonationRequestDetailClient({ params, id }) {
                                         </h3>
                                         <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                                             <p className="text-gray-800 leading-relaxed">
-                                                {request.requestMessage ||
-                                                    "Blood donation needed for medical procedure"}
+                                                {request.requestMessage || "Blood donation needed for medical procedure"}
                                             </p>
                                         </div>
                                     </div>

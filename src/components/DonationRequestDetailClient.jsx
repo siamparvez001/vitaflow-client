@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { use } from "react";
+// import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Button, Modal } from "@heroui/react";
@@ -8,13 +8,12 @@ import { FiMapPin, FiArrowLeft } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
 import { useSession } from "@/lib/auth-client";
 
-export default function DonationRequestDetailClient({ params, id }) {
+export default function DonationRequestDetailClient({ id }) {
     // ✅ params থাকলে এবং সেটা Promise হলে use() দিয়ে resolve করো,
     // params undefined/null হলে use() কল করার দরকার নেই — সরাসরি id তে fallback করবে
-    const resolvedParams =
-        params && typeof params.then === "function" ? use(params) : params;
+    // const resolvedId = id;
 
-    const resolvedId = id || resolvedParams?.id;
+    const resolvedId = id ;
 
     const router = useRouter();
 

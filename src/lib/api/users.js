@@ -1,3 +1,4 @@
+// api/users.js
 import { serverFetch } from "../core/server";
 import { getUserSession } from "../core/session";
 
