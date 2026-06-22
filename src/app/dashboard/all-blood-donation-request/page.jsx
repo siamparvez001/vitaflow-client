@@ -3,19 +3,24 @@ import { requireRole } from "@/lib/actions/roleCheck";
 import { serverFetch } from "@/lib/core/server";
 import DonationRequestTableClient from "./DonationRequestTableClient";
 
-export default async function AllBloodDonationRequestPage() {
-    // ✅ শুধু Admin আর Volunteer এই পেজে ঢুকতে পারবে, Donor না।
-    // requireRole নিজেই session না থাকলে /auth/signin এ,
-    // ভুল role হলে /unauthorized এ পাঠিয়ে দেয়।
+export default async function AllBloodDonationRequestPage({ searchParams }) {
     const session = await requireRole(["Admin", "Volunteer"]);
 
-    // ✅ serverFetch ব্যবহার করছি - এটা automatically internal secret
-    // + user email/role হেডার পাঠায়, যা Express backend যাচাই করে।
-    const requests = await serverFetch("/api/create-donation-request");
+    // ✅ URL এর ?page= এখানে server-component এ পড়ে backend এ পাঠাচ্ছি
+    const params = await searchParams;
+    const page = params?.page || "1";
+    const status = params?.status;
+
+    const query = new URLSearchParams({ page, limit: "5" });
+    if (status) query.set("status", status);
+
+    // ✅ backend এখন { data, total, page, totalPages } পাঠায়
+    const result = await serverFetch(`/api/create-donation-request?${query.toString()}`);
 
     return (
         <DonationRequestTableClient
-            initialRequests={requests}
+            initialRequests={result.data || []}
+            totalPages={result.totalPages || 1}
             currentUserRole={session.user.role}
         />
     );

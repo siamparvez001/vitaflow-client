@@ -37,13 +37,16 @@ export default function MyDonationTableClient({ initialRequests }) {
             toast.error(error.message);
         }
     };
+    console.log("allRequest:", allRequest);
+    console.log("filteredRequests:", filteredRequests);
+    console.log("isArray:", Array.isArray(filteredRequests));
 
     const filteredRequests =
         statusFilter === "all"
             ? allRequest
             : allRequest.filter(
-                  (r) => r.status?.toLowerCase() === statusFilter.toLowerCase()
-              );
+                (r) => r.status?.toLowerCase() === statusFilter.toLowerCase()
+            );
 
     return (
 

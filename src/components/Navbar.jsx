@@ -16,7 +16,7 @@ export default function Navbar() {
     const [isMenuOpen, setIsMenuOpen] = useState(false);
     const router = useRouter();
     const { data: session, isPending } = useSession();
-    console.log("Session data is navbar:", session, "Is pending:", isPending)
+    // console.log("Session data is navbar:", session, "Is pending:", isPending)
     const user = session?.user;
 
 

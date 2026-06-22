@@ -28,7 +28,11 @@ export default function DonationRequestDetailClient() {
             router.push("/auth/signin");
         }
     }, [sessionPending, session, router]);
-
+    useEffect(() => {
+        console.log("🆔 useParams result:", params);
+        console.log("🆔 resolvedId:", resolvedId);
+        console.log("📍 Full URL will be:", `/api/internal/donation-request-detail/${resolvedId}`);
+    }, [params, resolvedId]);
     const fetchRequest = async () => {
         if (!resolvedId) {
             setLoading(false);

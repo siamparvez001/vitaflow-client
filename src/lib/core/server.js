@@ -1,4 +1,5 @@
 // src/lib/core/server.js
+import { signInternalToken } from "./jwt";
 import { getUserSession } from "./session";
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
@@ -32,12 +33,16 @@ const handleResponse = async (res) => {
 const buildHeaders = async (extra = {}) => {
     const user = await getUserSession();
 
-    return {
+    const headers = {
         "x-internal-secret": process.env.INTERNAL_API_SECRET,
-        ...(user?.email ? { "x-user-email": user.email } : {}),
-        ...(user?.role ? { "x-user-role": user.role } : {}),
         ...extra,
     };
+
+    if (user?.email) {
+        headers["Authorization"] = `Bearer ${signInternalToken(user)}`;
+    }
+
+    return headers;
 };
 
 export const serverFetch = async (path) => {

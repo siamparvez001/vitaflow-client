@@ -3,20 +3,6 @@ import { NextResponse } from "next/server";
 import { getUserSession } from "@/lib/core/session";
 import { serverFetch } from "@/lib/core/server";
 
-/**
- * Client component গুলো (AdminDashboardHome.jsx, VolunteerDashboardHome.jsx,
- * DonorDashboardHome.jsx) সরাসরি Express কে কল করতে পারবে না কারণ ব্রাউজারের
- * কাছে internal secret থাকা নিরাপদ না।
- *
- * তাই এই route টা মাঝখানে বসে - browser এই Next.js route কে কল করে (যেটা
- * নিরাপদ, কারণ এটা server-side এ চলে), আর এই route ভিতরে গিয়ে serverFetch
- * দিয়ে Express কে কল করে secret সহ।
- *
- * ব্যবহার (client component থেকে):
- *   fetch('/api/internal/dashboard-data?type=admin')
- *   fetch('/api/internal/dashboard-data?type=volunteer')
- *   fetch('/api/internal/dashboard-data?type=donor')
- */
 export async function GET(request) {
     const session = await getUserSession();
 
@@ -32,29 +18,37 @@ export async function GET(request) {
             if (session.role !== "Admin") {
                 return NextResponse.json({ message: "Forbidden" }, { status: 403 });
             }
-            const [users, requests] = await Promise.all([
-                serverFetch("/api/all-users"),
-                serverFetch("/api/create-donation-request"),
+            const [usersResult, requestsResult] = await Promise.all([
+                serverFetch("/api/all-users?limit=1000"),
+                serverFetch("/api/create-donation-request?limit=1000"),
             ]);
-            return NextResponse.json({ users, requests });
+            // ✅ FIXED — backend এখন { data, total, page, totalPages } পাঠায়,
+            // আগে সরাসরি array পাঠাতো। এখন .data বের করে নিচ্ছি, আর
+            // dashboard এর জন্য limit=1000 দিয়ে কল করছি যাতে stats/recent
+            // list সব data নিয়ে হিসাব করতে পারে (এটা pagination না,
+            // শুধু dashboard summary এর জন্য)।
+            return NextResponse.json({
+                users: usersResult.data || [],
+                requests: requestsResult.data || [],
+            });
         }
 
         if (type === "volunteer") {
             if (session.role !== "Volunteer") {
                 return NextResponse.json({ message: "Forbidden" }, { status: 403 });
             }
-            const requests = await serverFetch("/api/create-donation-request");
-            return NextResponse.json({ requests });
+            const requestsResult = await serverFetch("/api/create-donation-request?limit=1000");
+            return NextResponse.json({ requests: requestsResult.data || [] });
         }
 
         if (type === "donor") {
             if (session.role !== "Donor") {
                 return NextResponse.json({ message: "Forbidden" }, { status: 403 });
             }
-            const requests = await serverFetch(
-                `/api/my-donation-requests?email=${session.email}`
+            const requestsResult = await serverFetch(
+                `/api/my-donation-requests?limit=1000`
             );
-            return NextResponse.json({ requests });
+            return NextResponse.json({ requests: requestsResult.data || [] });
         }
 
         return NextResponse.json({ message: "Invalid type" }, { status: 400 });

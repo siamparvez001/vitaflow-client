@@ -6,11 +6,28 @@ const client = new MongoClient(process.env.MONGO_DB_URI);
 const db = client.db(process.env.AUTH_DB_NAME);
 
 export const auth = betterAuth({
-    database: mongodbAdapter(db, {
-        client
-    }),
+    database: mongodbAdapter(db, { client }),
     emailAndPassword: {
         enabled: true,
+    },
+    hooks: {
+        before: async (context) => {
+            // ✅ Blocked user signin করতে পারবে না
+            if (context.path === "/sign-in/email") {
+                const email = context.body?.email;
+                if (email) {
+                    const user = await db.collection("user").findOne({ email });
+                    if (user?.status === "Blocked") {
+                        return {
+                            error: {
+                                status: 403,
+                                message: "Your account has been blocked. Please contact support.",
+                            },
+                        };
+                    }
+                }
+            }
+        },
     },
     user: {
         additionalFields: {
@@ -35,7 +52,6 @@ export const auth = betterAuth({
                 type: "object",
                 required: false,
                 input: true,
-                // ✅ Nested fields
                 fields: {
                     bloodGroup: {
                         type: "string",

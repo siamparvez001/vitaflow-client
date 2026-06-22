@@ -1,7 +1,9 @@
+// /src/lib/actions/blood_request.js
 "use server"
 
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
+import { signInternalToken } from "@/lib/core/jwt"; // ✅ NEW
 
 const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || "http://localhost:5000";
 const internalSecret = process.env.INTERNAL_API_SECRET;
@@ -20,8 +22,7 @@ export const bloodRequest = async (bloodRequestData) => {
         headers: {
             'Content-Type': 'application/json',
             'x-internal-secret': internalSecret,
-            'x-user-email': session.user.email,
-            'x-user-role': session.user.role,
+            'Authorization': `Bearer ${signInternalToken(session.user)}`, // ✅ NEW
         },
         body: JSON.stringify(bloodRequestData)
     });

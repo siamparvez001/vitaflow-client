@@ -1,14 +1,38 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { FiMoreVertical, FiEye, FiEdit2, FiTrash2, FiCheckCircle, FiXCircle, FiActivity } from "react-icons/fi";
 import { toast, Toaster } from "react-hot-toast";
 
-export default function DonationRequestTableClient({ initialRequests, currentUserRole }) {
+export default function DonationRequestTableClient({ initialRequests, totalPages: initialTotalPages, currentUserRole }) {
+    const router = useRouter();
+    const searchParams = useSearchParams();
+
+    const currentPage = Math.max(parseInt(searchParams.get("page")) || 1, 1);
+    const filterStatus = searchParams.get("status") || "all";
+
     const [requests, setRequests] = useState(initialRequests || []);
-    const [filterStatus, setFilterStatus] = useState("all");
+    const [totalPages, setTotalPages] = useState(initialTotalPages || 1);
     const [activeDropdown, setActiveDropdown] = useState(null);
 
     const dropdownRef = useRef(null);
+
+    useEffect(() => {
+        setRequests(initialRequests || []);
+        setTotalPages(initialTotalPages || 1);
+    }, [initialRequests, initialTotalPages]);
+
+    const updateUrl = (params) => {
+        const newParams = new URLSearchParams(searchParams.toString());
+        Object.entries(params).forEach(([key, value]) => {
+            if (value === null || value === undefined || value === "") {
+                newParams.delete(key);
+            } else {
+                newParams.set(key, value);
+            }
+        });
+        router.push(`/dashboard/all-blood-donation-request?${newParams.toString()}`);
+    };
 
     useEffect(() => {
         function handleClickOutside(event) {
@@ -25,9 +49,6 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
         setActiveDropdown(activeDropdown === id ? null : id);
     };
 
-    // ✅ আগে ভুল endpoint (`/api/donation-request/status/:id`) ছিল যেটা
-    // Express এ আদৌ exist করে না, আর সরাসরি browser থেকে Express কে কল
-    // করার চেষ্টা করছিল secret ছাড়া। এখন internal route ব্যবহার করছি।
     const handleStatusUpdate = async (requestId, newStatus) => {
         setActiveDropdown(null);
         try {
@@ -39,7 +60,9 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
 
             if (res.ok) {
                 toast.success(`Status updated to ${newStatus}`);
-                setRequests(prev => prev.map(req => req._id === requestId ? { ...req, status: newStatus } : req));
+                setRequests(prev => prev.map(req =>
+                    req._id === requestId ? { ...req, status: newStatus } : req
+                ));
             } else {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.message || "Failed to update status");
@@ -49,7 +72,6 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
         }
     };
 
-    // ✅ আগে ভুল endpoint (`/api/donation-request/:id`) ছিল - এখন internal route
     const handleDeleteRequest = async (requestId) => {
         setActiveDropdown(null);
         if (!confirm("Are you sure you want to delete this donation request?")) return;
@@ -61,7 +83,7 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
 
             if (res.ok) {
                 toast.success("Request deleted successfully");
-                setRequests(prev => prev.filter(req => req._id !== requestId));
+                router.refresh();
             } else {
                 const err = await res.json().catch(() => ({}));
                 throw new Error(err.message || "Failed to delete request");
@@ -71,14 +93,11 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
         }
     };
 
-    const filteredRequests = filterStatus === "all"
-        ? requests
-        : requests.filter(req => req.status?.toLowerCase() === filterStatus.toLowerCase());
-
     const getStatusStyle = (status) => {
         switch (status?.toLowerCase()) {
             case "pending": return "bg-amber-950/40 text-amber-400 border border-amber-900/50";
             case "inprogress": return "bg-blue-950/40 text-blue-400 border border-blue-900/50";
+            case "in progress": return "bg-blue-950/40 text-blue-400 border border-blue-900/50";
             case "done": return "bg-emerald-950/40 text-emerald-400 border border-emerald-900/50";
             case "canceled": return "bg-rose-950/40 text-rose-400 border border-rose-900/50";
             default: return "bg-gray-800 text-gray-400";
@@ -90,17 +109,18 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
             <Toaster position="top-right" toastOptions={{ style: { background: '#12131A', color: '#FFF' } }} />
             <div className="max-w-7xl mx-auto flex flex-col gap-6">
 
+                {/* Header + Filter */}
                 <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-[#11121A] p-6 rounded-2xl border border-gray-800/60">
                     <div>
                         <h2 className="text-xl font-black tracking-wide text-gray-100">All Blood Donation Requests</h2>
-                        <p className="text-xs text-gray-500 mt-1">Role-based Access Control Dashboard ({currentUserRole})</p>
+                        <p className="text-xs text-gray-500 mt-1">Role: {currentUserRole}</p>
                     </div>
 
                     <div className="flex flex-wrap gap-2 bg-[#171822] p-1.5 rounded-xl border border-gray-800">
                         {["all", "pending", "inprogress", "done", "canceled"].map((status) => (
                             <button
                                 key={status}
-                                onClick={() => setFilterStatus(status)}
+                                onClick={() => updateUrl({ status: status === "all" ? null : status, page: 1 })}
                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider transition-all ${filterStatus === status
                                     ? "bg-[#800020] text-white shadow-lg"
                                     : "text-gray-400 hover:text-gray-200"
@@ -112,6 +132,7 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                     </div>
                 </div>
 
+                {/* Table */}
                 <div className="bg-[#11121A] rounded-2xl border border-gray-800/60 overflow-visible shadow-2xl">
 
                     <div className="grid grid-cols-12 bg-[#151622] py-4 px-6 text-[11px] font-black uppercase tracking-widest text-gray-400 border-b border-gray-800/80">
@@ -124,13 +145,12 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                     </div>
 
                     <div className="flex flex-col divide-y divide-gray-800/40 overflow-visible">
-                        {filteredRequests && filteredRequests.length > 0 ? (
-                            filteredRequests.map((request) => {
+                        {requests && requests.length > 0 ? (
+                            requests.map((request) => {
                                 const nameInitials = request.recipientName
                                     ? request.recipientName.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase()
                                     : 'RE';
 
-                                // ✅ Volunteer শুধু status আপডেট করতে পারবে - requirement অনুযায়ী
                                 const canEditDelete = currentUserRole === "Admin";
 
                                 return (
@@ -200,7 +220,6 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                                         </button>
                                                     )}
 
-                                                    {/* ✅ শুধু Admin - Volunteer এই অপশন দেখবে না */}
                                                     {canEditDelete && (
                                                         <div className="border-t border-gray-800/60 mt-1 pt-1">
                                                             <a href={`/dashboard/edit-donation-request/${request._id}`} className="w-full text-left px-4 py-2 text-xs text-amber-400 hover:bg-amber-950/10 flex items-center gap-2 transition-colors">
@@ -214,7 +233,6 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                                                 </div>
                                             )}
                                         </div>
-
                                     </div>
                                 );
                             })
@@ -225,6 +243,40 @@ export default function DonationRequestTableClient({ initialRequests, currentUse
                         )}
                     </div>
                 </div>
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                    <div className="flex justify-center gap-2">
+                        <button
+                            onClick={() => updateUrl({ page: Math.max(1, currentPage - 1) })}
+                            disabled={currentPage === 1}
+                            className="px-4 py-2 rounded-lg text-xs font-bold bg-[#171822] text-gray-300 border border-gray-800 disabled:opacity-40"
+                        >
+                            Previous
+                        </button>
+
+                        {Array.from({ length: totalPages }).map((_, i) => (
+                            <button
+                                key={i + 1}
+                                onClick={() => updateUrl({ page: i + 1 })}
+                                className={`px-4 py-2 rounded-lg text-xs font-bold border ${currentPage === i + 1
+                                    ? "bg-[#800020] text-white border-[#800020]"
+                                    : "bg-[#171822] text-gray-300 border-gray-800"
+                                    }`}
+                            >
+                                {i + 1}
+                            </button>
+                        ))}
+
+                        <button
+                            onClick={() => updateUrl({ page: Math.min(totalPages, currentPage + 1) })}
+                            disabled={currentPage === totalPages}
+                            className="px-4 py-2 rounded-lg text-xs font-bold bg-[#171822] text-gray-300 border border-gray-800 disabled:opacity-40"
+                        >
+                            Next
+                        </button>
+                    </div>
+                )}
             </div>
         </>
     );
