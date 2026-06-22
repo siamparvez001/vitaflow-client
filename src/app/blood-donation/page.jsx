@@ -1,5 +1,7 @@
 // app/blood-donation/page.js
-import DonationRequest from "@/components/DonationRequest";
+// import DonationRequest from "@/components/DonationRequest";
+
+import DonationRequest from "../donation-request/page";
 
 export const metadata = {
   title: "Blood Donation Requests | VitaFlow",
