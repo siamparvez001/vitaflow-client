@@ -1,4 +1,4 @@
-// src/app/dashboard/page.js
+// src/app/dashboard/page.jsx
 import { requireAuth } from "@/lib/actions/roleCheck";
 import DonorDashboardHome from "@/components/dashboard/DonorDashboardHome";
 import VolunteerDashboardHome from "@/components/dashboard/VolunteerDashboardHome";
