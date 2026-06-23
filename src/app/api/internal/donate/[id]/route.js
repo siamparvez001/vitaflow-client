@@ -3,7 +3,6 @@ import { NextResponse } from "next/server";
 import { serverMutation } from "@/lib/core/server";
 import { getUserSession } from "@/lib/core/session";
 
-
 export async function PATCH(request, { params }) {
     const session = await getUserSession();
 
