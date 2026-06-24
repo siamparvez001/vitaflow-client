@@ -30,22 +30,7 @@
 
 **Frontend:** [https://vitaflow-client.vercel.app/](https://vitaflow-client.vercel.app/)
 
-**Test Credentials:**
-```
-Admin Account:
-Email: admin@vitaflow.com
-Password: Admin@123
 
-Donor Account:
-Email: donor@vitaflow.com
-Password: Donor@123
-
-Volunteer Account:
-Email: volunteer@vitaflow.com
-Password: Volunteer@123
-```
-
----
 
 ## 📖 Project Overview
 
